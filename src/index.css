@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  
+  --color-jtweet-black: #0a0a0a;
+  --color-jtweet-gray: #1a1a1a;
+  --color-jtweet-cyan: #00f2ff;
+  --color-jtweet-silver: #e0e0e0;
+}
+
+@layer base {
+  body {
+    @apply bg-jtweet-black text-jtweet-silver font-sans antialiased;
+  }
+}
+
+/* Glassmorphism utility */
+.glass {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+}
+
+.cyan-glow {
+  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5), 0 0 20px rgba(0, 242, 255, 0.3);
+}
+
+.cyan-border-glow {
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+}

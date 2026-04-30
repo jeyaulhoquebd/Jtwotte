@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "avatar", "createdAt"]
+    },
+    "Tweet": {
+      "title": "Tweet",
+      "description": "A microblog post",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["tweet", "retweet"] },
+        "originalTweetId": { "type": "string" },
+        "likesCount": { "type": "number" },
+        "retweetsCount": { "type": "number" },
+        "repliesCount": { "type": "number" }
+      },
+      "required": ["authorId", "content", "timestamp", "type"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "User like on a tweet",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tweetId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "tweetId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System notification for users",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "type": { "type": "string", "enum": ["like", "comment", "retweet", "follow"] },
+        "tweetId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientId", "senderId", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Global user profiles"
+    },
+    "/tweets/{tweetId}": {
+      "schema": "Tweet",
+      "description": "Global public tweets"
+    },
+    "/tweets/{tweetId}/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Individual likes on a tweet"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User-specific notifications"
+    }
+  }
+}
