@@ -151,52 +151,66 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
 
     // Listen to ALL tweets
     const q = query(collection(db, 'tweets'), orderBy('timestamp', 'desc'));
+    const globalAuthorCache: Record<string, any> = {};
+
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
+        const docs = snapshot.docs;
         const tweetList: Tweet[] = [];
-        const authorCache: Record<string, any> = {};
-
-        for (const d of snapshot.docs) {
+        
+        // Batch fetch authors and original tweets to avoid N+1 issues and connection saturation
+        const promises = docs.map(async (d) => {
           const data = d.data();
           const authorId = data.authorId;
           
-          let authorData = authorCache[authorId];
+          let authorData = globalAuthorCache[authorId];
           if (!authorData) {
-            const userSnap = await getDoc(doc(db, 'users', authorId));
-            authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
-            const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
-            authorData.handle = `@${baseHandle}`;
-            authorCache[authorId] = authorData;
+            try {
+              const userSnap = await getDoc(doc(db, 'users', authorId));
+              authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
+              const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
+              authorData.handle = `@${baseHandle}`;
+              globalAuthorCache[authorId] = authorData;
+            } catch (e) {
+              console.warn("Failed to fetch author", authorId, e);
+              authorData = { name: 'Unknown', avatar: '', handle: '@unknown' };
+            }
           }
 
           let originalTweet = null;
           if (data.type === 'retweet' && data.originalTweetId) {
-            const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
-            if (origSnap.exists()) {
-               const origData = origSnap.data();
-               const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
-               const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
-               const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
-               originalTweet = {
-                 id: origSnap.id,
-                 ...origData,
-                 author: {
-                   name: origAuthorData.name,
-                   avatar: origAuthorData.avatar,
-                   handle: `@${origBaseHandle}`
-                 }
-               };
+            try {
+              const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
+              if (origSnap.exists()) {
+                 const origData = origSnap.data();
+                 const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
+                 const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
+                 const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
+                 originalTweet = {
+                   id: origSnap.id,
+                   ...origData,
+                   author: {
+                     name: origAuthorData.name,
+                     avatar: origAuthorData.avatar,
+                     handle: `@${origBaseHandle}`
+                   }
+                 };
+              }
+            } catch (e) {
+               console.warn("Failed to fetch original tweet", data.originalTweetId, e);
             }
           }
 
-          tweetList.push({
+          return {
             id: d.id,
             ...data,
             author: authorData,
             originalTweet
-          } as Tweet);
-        }
-        setTweets(tweetList);
+          } as Tweet;
+        });
+
+        const results = await Promise.all(promises);
+        setTweets(results);
         setLoading(false);
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'tweets');

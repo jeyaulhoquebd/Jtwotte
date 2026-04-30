@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
-          const isOwner = fbUser.email === "jeyaulhoque2025@gmail.com";
+          const isOwner = fbUser.email === "jeyaulhoque2025@gmail.com" || fbUser.email === "jeyaulbooks@gmail.com";
           const newUser = {
             uid: fbUser.uid,
             name: isOwner ? "Jeyaul Hoque" : (fbUser.displayName || 'Anonymous'),

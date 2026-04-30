@@ -13,8 +13,7 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'jeyaulhoque2025@gmail.com' ||
-        request.auth.token.email == 'jeyaulbooks@gmail.com' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        request.auth.token.email == 'jeyaulbooks@gmail.com'
       );
     }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -37,9 +36,12 @@ service cloud.firestore {
         && data.createdAt == request.time;
     }
 
+    match /test/connection {
+      allow get: if true;
+    }
+
     match /users/{userId} {
-      allow get: if true; // Required for public profiles
-      allow list: if isSignedIn() && resource.data.uid == request.auth.uid; // Secure list: only own profile or specific search
+      allow read: if true; // Required for public profiles
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if (isOwner(userId) || isAdmin()) 
         && incoming().uid == existing().uid
@@ -64,8 +66,8 @@ service cloud.firestore {
     }
 
     match /tweets/{tweetId} {
-      allow read: if true; // Public data
-      allow create: if isSignedIn() && isEmailVerified()
+      allow read: if true;
+      allow create: if isSignedIn()
         && isValidTweet(incoming());
       allow update: if isSignedIn() && (
         isAdmin()
@@ -113,8 +115,7 @@ service cloud.firestore {
     }
 
     match /followers/{followId} {
-      allow get: if true;
-      allow list: if resource.data.followerId is string; // Publicly queryable relationships
+      allow read: if true;
       allow create: if isSignedIn() && incoming().followerId == request.auth.uid;
       allow delete: if isSignedIn() && existing().followerId == request.auth.uid;
     }

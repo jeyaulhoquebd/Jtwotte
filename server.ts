@@ -23,7 +23,7 @@ async function startServer() {
   // Admin Check
   app.post("/api/admin/check", (req, res) => {
     const { email } = req.body;
-    if (email === "jeyaulhoqeu2025@gmail.com") {
+    if (email === "jeyaulhoque2025@gmail.com" || email === "jeyaulbooks@gmail.com") {
       return res.json({ isAdmin: true, role: "owner" });
     }
     res.json({ isAdmin: false });
