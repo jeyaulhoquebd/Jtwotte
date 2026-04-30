@@ -12,7 +12,7 @@ service cloud.firestore {
     function isEmailVerified() { return request.auth.token.email_verified == true; }
     function isAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == 'jeyaulhoqeu2025@gmail.com' ||
+        request.auth.token.email == 'jeyaulhoque2025@gmail.com' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
@@ -52,12 +52,18 @@ service cloud.firestore {
         && (data.get('media', null) == null || data.media is map)
         && data.timestamp == request.time
         && data.type in ['tweet', 'retweet', 'reply']
-        && (data.get('originalTweetId', null) == null || isValidId(data.originalTweetId));
+        && (data.get('originalTweetId', null) == null || isValidId(data.originalTweetId))
+        && (data.get('likesCount', 0) is number)
+        && (data.get('retweetsCount', 0) is number)
+        && (data.get('repliesCount', 0) is number)
+        && (data.get('impressions', 0) is number);
     }
 
     match /tweets/{tweetId} {
       allow read: if true;
-      allow create: if isSignedIn() && isEmailVerified() && isValidUser(get(/databases/$(database)/documents/users/$(request.auth.uid)).data) && isValidTweet(incoming());
+      allow create: if isSignedIn() && isEmailVerified() 
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && isValidTweet(incoming());
       allow update: if isSignedIn() && (
         isAdmin()
         || (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'retweetsCount', 'repliesCount', 'impressions']))
