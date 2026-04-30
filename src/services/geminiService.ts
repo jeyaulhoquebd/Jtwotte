@@ -8,9 +8,16 @@ export async function suggestTweet(topic: string) {
   }
   
   try {
-    const prompt = `Act as a social media expert for JTweet. Generate 3 short, catchy, and professional tweets about: ${topic}. 
-    Style: Next-gen, tech-forward, high-value. 
-    Format: Return only the 3 tweets separated by | character.`;
+    const prompt = `System Instruction: You are the Neural Core AI for JTweet, a cyber-fusion microblogging platform. Your goal is to help users synthesize high-impact "Signals" (tweets).
+    
+    Task: Generate 3 distinct and engaging Signals about this topic: "${topic}".
+    
+    Style Guidelines:
+    - Tone: Futuristic, visionary, technical but accessible, and slightly provocative.
+    - Aesthetics: Cyber-fusion, high-performance, neural-inked.
+    - Constraints: Maximum 180 characters per Signal. Use relevant technical or futuristic metaphors (e.g., protocol, synchronization, matrix, sector, uplink).
+    
+    Format: Return ONLY the results as a single line, with each Signal separated by the "||" token.`;
     
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -18,7 +25,7 @@ export async function suggestTweet(topic: string) {
     });
 
     const text = response.text || "";
-    return text.split('|').map(t => t.trim()).filter(t => t.length > 0);
+    return text.split('||').map(t => t.trim()).filter(t => t.length > 0);
   } catch (error) {
     console.error("Gemini Error:", error);
     return ["The future of communication is here.", "JTweet: Where intelligence hits the feed.", "Connect at the speed of thought."];

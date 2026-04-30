@@ -13,6 +13,7 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'jeyaulhoque2025@gmail.com' ||
+        request.auth.token.email == 'jeyaulbooks@gmail.com' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
@@ -23,25 +24,28 @@ service cloud.firestore {
     // --- User Validation ---
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'name', 'email', 'avatar', 'createdAt'])
-        && data.keys().size() <= 8
+        && data.keys().size() <= 12
         && data.uid == request.auth.uid
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 50
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 64
         && data.email is string && data.email.size() <= 100
-        && data.avatar is string && data.avatar.size() <= 500
-        && (data.get('bio', '') is string && data.get('bio', '').size() <= 160)
+        && data.avatar is string && data.avatar.size() <= 1000000 // Allow dataURL
+        && (data.get('cover', '') is string && data.get('cover', '').size() <= 1000000)
+        && (data.get('bio', '') is string && data.get('bio', '').size() <= 500)
+        && (data.get('location', '') is string && data.get('location', '').size() <= 100)
+        && (data.get('website', '') is string && data.get('website', '').size() <= 200)
         && (data.get('role', 'user') in ['user', 'admin'])
         && data.createdAt == request.time;
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get: if true; // Required for public profiles
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid; // Secure list: only own profile or specific search
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if (isOwner(userId) || isAdmin()) 
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt
         && incoming().email == existing().email
-        && (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'role']));
+        && (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'role', 'cover', 'location', 'website']));
     }
 
     // --- Tweet Validation ---
@@ -60,8 +64,8 @@ service cloud.firestore {
     }
 
     match /tweets/{tweetId} {
-      allow read: if true;
-      allow create: if isSignedIn() 
+      allow read: if true; // Public data
+      allow create: if isSignedIn() && isEmailVerified()
         && isValidTweet(incoming());
       allow update: if isSignedIn() && (
         isAdmin()
@@ -109,7 +113,8 @@ service cloud.firestore {
     }
 
     match /followers/{followId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if resource.data.followerId is string; // Publicly queryable relationships
       allow create: if isSignedIn() && incoming().followerId == request.auth.uid;
       allow delete: if isSignedIn() && existing().followerId == request.auth.uid;
     }

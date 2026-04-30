@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTweets } from '../context/TweetContext';
 import { useSocial } from '../context/SocialContext';
+import { useMessages } from '../context/MessageContext';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { 
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import TweetCard from '../components/TweetCard';
+import EditProfileModal from '../components/EditProfileModal';
 
 export default function ProfilePage() {
   const { uid } = useParams();
@@ -35,6 +37,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('signals');
 
   const isMe = currentUser?.uid === uid;
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { startConversation } = useMessages();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -72,6 +77,12 @@ export default function ProfilePage() {
     }
   };
 
+  const handleMessage = async () => {
+    if (!uid) return;
+    const convId = await startConversation(uid);
+    navigate('/messages');
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
        <div className="w-10 h-10 border-2 border-white/5 border-t-jtweet-cyan animate-spin rounded-full" />
@@ -84,7 +95,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-10 glass border-b border-white/5 p-4 flex items-center gap-6">
+      <header className="sticky top-0 z-20 glass border-b border-white/5 p-4 flex items-center gap-6">
         <Link to="/" className="p-2 hover:bg-white/5 rounded-full text-jtweet-cyan transition-colors">
           <ChevronLeft />
         </Link>
@@ -98,46 +109,65 @@ export default function ProfilePage() {
       </header>
 
       {/* Banner */}
-      <div className="h-48 bg-jtweet-black relative overflow-hidden">
-         <div className="absolute inset-0 bg-gradient-to-b from-jtweet-cyan/20 to-transparent flex items-center justify-center">
-            <Zap size={64} className="text-jtweet-cyan/10 animate-pulse" />
-         </div>
+      <div className="h-64 bg-jtweet-black relative overflow-hidden group">
+         {profileUser.cover ? (
+           <img src={profileUser.cover} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000" alt="Cover" referrerPolicy="no-referrer" />
+         ) : (
+           <div className="absolute inset-0 bg-gradient-to-br from-jtweet-cyan/20 via-jtweet-black to-jtweet-black flex items-center justify-center">
+              <Zap size={80} className="text-jtweet-cyan/5 animate-pulse" />
+           </div>
+         )}
+         <div className="absolute inset-0 bg-gradient-to-t from-jtweet-black to-transparent" />
+         
          {/* Profile Pic Placement */}
-         <div className="absolute -bottom-16 left-6 p-1 bg-jtweet-black rounded-full border-4 border-jtweet-black z-10">
-            <img src={profileUser.avatar} className="w-32 h-32 rounded-full shadow-2xl" alt="" />
-            {profileUser.role === 'admin' && (
-              <div className="absolute bottom-2 right-2 bg-jtweet-black p-1.5 rounded-full border border-white/10">
-                 <ShieldCheck size={16} className="text-jtweet-cyan" />
-              </div>
-            )}
+         <div className="absolute -bottom-16 left-8 p-1.5 bg-jtweet-black rounded-[32px] border-4 border-jtweet-black z-10 shadow-2xl overflow-hidden">
+            <div className="w-32 h-32 rounded-[28px] overflow-hidden relative group/avatar">
+              <img src={profileUser.avatar} className="w-full h-full object-cover transition-transform group-hover/avatar:scale-110" alt="Avatar" referrerPolicy="no-referrer" />
+              {profileUser.role === 'admin' && (
+                <div className="absolute bottom-2 right-2 bg-jtweet-black/80 backdrop-blur-md p-1.5 rounded-xl border border-jtweet-cyan/30">
+                  <ShieldCheck size={16} className="text-jtweet-cyan drop-shadow-[0_0_8px_rgba(0,255,242,0.5)]" />
+                </div>
+              )}
+            </div>
          </div>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end p-4 gap-3 mt-4">
+      <div className="flex justify-end p-6 gap-3 pt-4">
          {isMe ? (
            <>
-             <button className="px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-widest">
-                Edit Bio
+             <button 
+               onClick={() => setIsEditModalOpen(true)}
+               className="px-6 py-2.5 rounded-2xl border border-white/10 hover:border-jtweet-cyan/50 hover:bg-jtweet-cyan/5 transition-all text-xs font-bold uppercase tracking-widest group"
+             >
+                <span className="flex items-center gap-2 group-hover:text-jtweet-cyan">
+                  <Edit3 size={14} /> Synchronize Profile
+                </span>
              </button>
-             <Link to="/settings" className="p-2.5 rounded-full border border-white/10 hover:bg-white/5 text-white/60">
+             <Link to="/settings" className="p-3 rounded-2xl border border-white/10 hover:bg-white/5 text-white/40 hover:text-white transition-all">
                 <Settings size={18} />
              </Link>
            </>
          ) : (
            <>
-             <button className="p-2.5 rounded-full border border-white/10 hover:bg-white/5 text-white/60">
+             <button 
+               onClick={handleMessage}
+               className="p-3 rounded-2xl border border-white/10 hover:bg-jtweet-cyan/10 text-white/40 hover:text-jtweet-cyan transition-all"
+             >
                 <MessageSquare size={18} />
              </button>
              <button 
                onClick={handleFollow}
-               className={`px-8 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${following ? 'border border-white/10 text-white/60 hover:border-red-400 hover:text-red-400' : 'bg-jtweet-cyan text-jtweet-black shadow-cyan'}`}
+               className={`px-10 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${following ? 'border border-white/10 text-white/40 hover:border-red-400 hover:text-red-400 hover:bg-red-400/5' : 'bg-jtweet-cyan text-jtweet-black shadow-cyan hover:brightness-110 active:scale-95'}`}
              >
-                {following ? 'Unlink' : 'Connect'}
+                {following ? 'Disengage' : 'Establish Link'}
              </button>
            </>
          )}
       </div>
+
+      <EditProfileModal user={profileUser} isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
+
 
       {/* Profile Info */}
       <div className="px-6 mt-8 space-y-4">
@@ -149,8 +179,14 @@ export default function ProfilePage() {
          <p className="text-white/80 max-w-lg leading-relaxed">{profileUser.bio || 'This intelligence hasn\'t declared a protocol objective yet.'}</p>
 
          <div className="flex flex-wrap gap-x-6 gap-y-2 text-white/40 text-xs font-bold uppercase tracking-wide">
-            <div className="flex items-center gap-1.5"><MapPin size={14} /> Neutral Sector</div>
-            <div className="flex items-center gap-1.5 text-jtweet-cyan"><LinkIcon size={14} /> source_link.neo</div>
+            <div className="flex items-center gap-1.5"><MapPin size={14} /> {profileUser.location || 'Unknown Sector'}</div>
+            {profileUser.website ? (
+              <a href={profileUser.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-jtweet-cyan hover:underline transition-all">
+                <LinkIcon size={14} /> {profileUser.website.replace(/^https?:\/\//, '')}
+              </a>
+            ) : (
+              <div className="flex items-center gap-1.5 opacity-30"><LinkIcon size={14} /> No Source</div>
+            )}
             <div className="flex items-center gap-1.5"><Calendar size={14} /> Joined {profileUser.createdAt?.toDate ? profileUser.createdAt.toDate().getFullYear() : '2026'}</div>
          </div>
 

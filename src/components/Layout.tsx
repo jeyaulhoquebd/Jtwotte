@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   ShieldCheck
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useMessages } from '../context/MessageContext';
@@ -133,16 +134,19 @@ function NavItem({ to, icon, label, className, badge }: { to: string, icon: Reac
   return (
     <NavLink 
       to={to} 
-      className={({ isActive }) => `flex items-center gap-4 p-3 px-4 rounded-full transition-all group relative ${className} ${isActive ? 'font-bold bg-white/5 text-jtweet-cyan' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+      className={({ isActive }) => `flex items-center gap-4 p-4 px-6 rounded-2xl transition-all group relative border border-transparent ${className} ${isActive ? 'bg-jtweet-cyan/5 border-jtweet-cyan/20 text-jtweet-cyan text-shadow-cyan' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
     >
       {({ isActive }) => (
         <>
-          <span className={`${isActive ? 'cyan-glow' : 'group-hover:scale-110 transition-transform'}`}>{icon}</span>
-          <span className="text-lg">{label}</span>
+          <span className={`${isActive ? 'animate-pulse' : 'group-hover:scale-110 transition-transform text-white/20 group-hover:text-white'}`}>{icon}</span>
+          <span className="text-sm font-bold uppercase tracking-[0.1em]">{label}</span>
           {badge && badge > 0 && (
-            <span className="absolute left-8 top-2 min-w-[20px] h-5 bg-jtweet-cyan text-jtweet-black text-[10px] font-bold rounded-full flex items-center justify-center shadow-cyan border-2 border-jtweet-black">
+            <span className="absolute left-10 top-3 min-w-[20px] h-5 bg-jtweet-cyan text-jtweet-black text-[10px] font-bold rounded-full flex items-center justify-center shadow-cyan border-2 border-jtweet-black">
               {badge > 9 ? '9+' : badge}
             </span>
+          )}
+          {isActive && (
+            <motion.div layoutId="navIndicator" className="absolute right-4 w-1.5 h-1.5 rounded-full bg-jtweet-cyan shadow-cyan" />
           )}
         </>
       )}
@@ -154,11 +158,13 @@ function MobileNavItem({ to, icon, badge }: { to: string, icon: ReactNode, badge
   return (
     <NavLink 
       to={to} 
-      className={({ isActive }) => `p-2 rounded-full transition-all relative ${isActive ? 'text-jtweet-cyan' : 'text-white/40'}`}
+      className={({ isActive }) => `p-3 rounded-xl transition-all relative group ${isActive ? 'text-jtweet-cyan glass shadow-cyan-lg' : 'text-white/20'}`}
     >
-      {icon}
+      <div className="group-active:scale-90 transition-transform">
+        {icon}
+      </div>
       {badge && badge > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-jtweet-cyan text-jtweet-black text-[8px] font-bold rounded-full flex items-center justify-center shadow-cyan">
+        <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-jtweet-cyan text-jtweet-black text-[9px] font-bold rounded-full flex items-center justify-center shadow-cyan overflow-hidden">
           {badge > 9 ? '9+' : badge}
         </span>
       )}

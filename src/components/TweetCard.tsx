@@ -44,40 +44,46 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
   return (
     <motion.div 
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="p-4 hover:bg-white/1 transition-colors group border-white/5"
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -2 }}
+      className="p-5 hover:bg-white/2 transition-all group relative border-b border-white/5"
     >
+      <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-jtweet-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      
       {isRetweet && (
-        <div className="flex items-center gap-2 mb-2 ml-10">
-          <Repeat2 size={12} className="text-white/30" />
-          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{tweet.author?.name} synchronized this signal</span>
+        <div className="flex items-center gap-2 mb-3 ml-12">
+          <Repeat2 size={14} className="text-jtweet-cyan animate-pulse" />
+          <span className="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">{tweet.author?.name} echoed this signal</span>
         </div>
       )}
 
-      <div className="flex gap-4">
-        <Link to={`/profile/${tweet.authorId}`} className="relative h-fit shrink-0" onClick={(e) => e.stopPropagation()}>
-          <img src={tweet.author?.avatar} alt="Avatar" className="w-12 h-12 rounded-full h-12" referrerPolicy="no-referrer" />
+      <div className="flex gap-4 relative">
+        <Link to={`/profile/${tweet.authorId}`} className="relative h-fit shrink-0 group/avatar" onClick={(e) => e.stopPropagation()}>
+          <div className="w-14 h-14 rounded-2xl overflow-hidden glass border border-white/10 group-hover/avatar:border-jtweet-cyan/50 transition-all p-0.5">
+            <img src={tweet.author?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[14px]" referrerPolicy="no-referrer" />
+          </div>
           {tweet.author?.role === 'admin' && (
-            <div className="absolute -bottom-1 -right-1 bg-jtweet-black rounded-full p-0.5 border border-white/10">
-              <ShieldCheck size={12} className="text-jtweet-cyan shadow-cyan" />
+            <div className="absolute -bottom-1.5 -right-1.5 bg-jtweet-black rounded-lg p-1 border border-jtweet-cyan/30 shadow-cyan">
+              <ShieldCheck size={12} className="text-jtweet-cyan" />
             </div>
           )}
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-sm truncate">
+            <div className="flex items-center gap-2 text-sm truncate">
               <Link 
                 to={`/profile/${tweet.authorId}`} 
-                className="font-bold hover:underline text-white flex items-center gap-1"
+                className="font-bold hover:text-jtweet-cyan text-white transition-colors flex items-center gap-1.5"
                 onClick={(e) => e.stopPropagation()}
               >
                 {tweet.author?.name}
-                {tweet.author?.role === 'admin' && <ShieldCheck size={14} className="text-jtweet-cyan" />}
+                {tweet.author?.role === 'admin' && <ShieldCheck size={14} className="text-jtweet-cyan shadow-cyan" />}
               </Link>
-              <span className="text-white/30">{tweet.author?.handle}</span>
-              <span className="text-white/20">· {timestamp}</span>
+              <span className="text-white/30 font-mono text-xs">@{tweet.author?.handle?.replace('@', '') || 'neural_node'}</span>
+              <span className="text-white/10">·</span>
+              <span className="text-white/20 text-xs">{timestamp}</span>
             </div>
             <div className="flex items-center gap-2">
               {(isAuthor || isAdmin) && (
@@ -189,19 +195,28 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
 }
 
 function InteractionBtn({ icon, count, color, active, onClick }: { icon: ReactNode, count?: number, color: 'cyan' | 'red' | 'green', active?: boolean, onClick?: (e: any) => void }) {
-  const colors = {
-    cyan: active ? 'text-jtweet-cyan bg-jtweet-cyan/10' : 'hover:text-jtweet-cyan hover:bg-jtweet-cyan/10',
-    red: active ? 'text-red-400 bg-red-400/10' : 'hover:text-red-400 hover:bg-red-400/10',
-    green: active ? 'text-green-400 bg-green-400/10' : 'hover:text-green-400 hover:bg-green-400/10'
+  const configs = {
+    cyan: {
+      active: 'text-jtweet-cyan shadow-[0_0_15px_rgba(0,255,242,0.3)] bg-jtweet-cyan/10',
+      hover: 'hover:text-jtweet-cyan hover:bg-jtweet-cyan/5 hover:shadow-[0_0_10px_rgba(0,255,242,0.1)]'
+    },
+    red: {
+      active: 'text-red-400 shadow-[0_0_15px_rgba(248,113,113,0.3)] bg-red-400/10',
+      hover: 'hover:text-red-400 hover:bg-red-400/5 hover:shadow-[0_0_10px_rgba(248,113,113,0.1)]'
+    },
+    green: {
+      active: 'text-green-400 shadow-[0_0_15px_rgba(74,222,128,0.3)] bg-green-400/10',
+      hover: 'hover:text-green-400 hover:bg-green-400/5 hover:shadow-[0_0_10px_rgba(74,222,128,0.1)]'
+    }
   };
 
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-2 group/btn transition-all ${colors[color]} p-2 px-3 rounded-full -ml-2 ${active ? 'font-bold' : ''}`}
+      className={`flex items-center gap-2 group/btn transition-all p-2.5 px-4 rounded-2xl border border-transparent ${active ? configs[color].active + ' border-white/5' : 'text-white/30 ' + configs[color].hover} active:scale-90`}
     >
-      <span className="group-hover/btn:scale-110 transition-transform">{icon}</span>
-      {count !== undefined && <span className="text-xs font-medium">{count > 0 ? count : ''}</span>}
+      <div className="group-hover/btn:scale-125 transition-transform duration-300">{icon}</div>
+      {count !== undefined && <span className={`text-[10px] font-bold tracking-widest ${active ? 'opacity-100' : 'opacity-40'}`}>{count || '0'}</span>}
     </button>
   );
 }

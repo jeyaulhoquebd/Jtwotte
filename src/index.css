@@ -1,31 +1,55 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "Space Mono", monospace;
   
-  --color-jtweet-black: #0a0a0a;
-  --color-jtweet-gray: #1a1a1a;
-  --color-jtweet-cyan: #00f2ff;
-  --color-jtweet-silver: #e0e0e0;
+  --color-jtweet-black: #050505;
+  --color-jtweet-dark: #0a0a0a;
+  --color-jtweet-cyan: #00fff2;
+  --color-jtweet-silver: #f0f0f0;
 }
 
 @layer base {
   body {
-    @apply bg-jtweet-black text-jtweet-silver font-sans antialiased;
+    @apply bg-jtweet-black text-jtweet-silver font-sans antialiased selection:bg-jtweet-cyan/30 selection:text-jtweet-cyan;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(0, 255, 242, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(0, 255, 242, 0.03) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
-/* Glassmorphism utility */
-.glass {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10;
-}
+@layer components {
+  /* Glassmorphism utility */
+  .glass {
+    @apply bg-white/3 backdrop-blur-2xl border border-white/10;
+  }
+  
+  .shadow-cyan {
+    filter: drop-shadow(0 0 8px rgba(0, 255, 242, 0.4));
+  }
+  
+  .shadow-cyan-lg {
+    filter: drop-shadow(0 0 15px rgba(0, 255, 242, 0.6));
+  }
 
-.cyan-glow {
-  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5), 0 0 20px rgba(0, 242, 255, 0.3);
-}
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
 
-.cyan-border-glow {
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-jtweet-cyan/50 transition-all;
+  }
 }

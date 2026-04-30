@@ -92,52 +92,63 @@ export default function HomeFeed() {
 
   return (
     <div className="relative">
-      <header className="sticky top-0 z-10 glass backdrop-blur-md border-b border-white/5">
+      <header className="sticky top-0 z-20 glass backdrop-blur-3xl border-b border-white/5">
         <div className="p-4 flex items-center justify-between">
-          <h2 className="text-xl font-display font-bold tracking-tight flex items-center gap-2">
-            Main Protocol
+          <h2 className="text-xl font-display font-bold tracking-tight flex items-center gap-2 bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent">
+            Neural Feed
             {user?.role === 'admin' && <ShieldCheck size={18} className="text-jtweet-cyan shadow-cyan" />}
           </h2>
           <div className="flex gap-2">
-             <button className="text-[10px] font-bold text-jtweet-cyan px-2 py-0.5 rounded-full bg-jtweet-cyan/10 border border-jtweet-cyan/20 uppercase tracking-widest">Live</button>
+             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-jtweet-cyan/5 border border-jtweet-cyan/20">
+               <div className="w-1.5 h-1.5 rounded-full bg-jtweet-cyan animate-pulse shadow-cyan" />
+               <span className="text-[10px] font-bold text-jtweet-cyan uppercase tracking-widest">Core Active</span>
+             </div>
           </div>
         </div>
-        <div className="flex px-4 divide-x divide-white/5 border-t border-white/5">
-           <FeedTab active={activeFeed === 'for-you'} label="For You" onClick={() => setActiveFeed('for-you')} />
-           <FeedTab active={activeFeed === 'following'} label="Following" onClick={() => setActiveFeed('following')} />
-           <FeedTab active={activeFeed === 'trending'} label="Trending" onClick={() => setActiveFeed('trending')} />
+        <div className="flex px-4 divide-x divide-white/5 border-t border-white/5 overflow-x-auto custom-scrollbar">
+           <FeedTab active={activeFeed === 'for-you'} label="Neural Sync" onClick={() => setActiveFeed('for-you')} />
+           <FeedTab active={activeFeed === 'following'} label="Linked Nodes" onClick={() => setActiveFeed('following')} />
+           <FeedTab active={activeFeed === 'trending'} label="High Flux" onClick={() => setActiveFeed('trending')} />
         </div>
       </header>
 
-      {/* Retweet Modal Placeholder */}
+      {/* Retweet Modal */}
       <AnimatePresence>
         {retweetModal && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-jtweet-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-jtweet-black/80 backdrop-blur-sm shadow-2xl"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="glass p-6 rounded-[32px] w-full max-w-md border-white/10"
+              exit={{ scale: 0.9, y: 20 }}
+              className="glass p-8 rounded-[40px] w-full max-w-lg border-white/10 relative overflow-hidden"
             >
-              <h3 className="text-sm font-bold text-jtweet-cyan mb-4 uppercase tracking-widest">Share Pulse</h3>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-jtweet-cyan to-transparent animate-pulse" />
+              <h3 className="text-sm font-bold text-jtweet-cyan mb-6 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Repeat2 size={16} /> 
+                Amplify Signal
+              </h3>
+              
               <textarea 
-                className="w-full bg-transparent border-none focus:ring-0 text-lg placeholder-white/20 resize-none min-h-[100px]"
-                placeholder="Add your commentary (optional)..."
+                className="w-full bg-transparent border-none focus:ring-0 text-xl placeholder-white/10 resize-none min-h-[120px] mb-6"
+                placeholder="Add synthesis logs (optional)..."
                 autoFocus
                 value={retweetCaption}
                 onChange={(e) => setRetweetCaption(e.target.value)}
               />
-              <div className="p-3 glass rounded-2xl border-white/5 bg-white/2 mb-6">
-                <p className="text-[10px] text-white/40 mb-1">Retweeting from {retweetModal.name}</p>
-                <p className="text-xs truncate text-white/60">Broadcast original signal to your feed.</p>
+              
+              <div className="p-4 glass rounded-3xl border-white/5 bg-white/2 mb-8 border-l-4 border-l-jtweet-cyan/50">
+                <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Original Source: {retweetModal.name}</p>
+                <p className="text-xs text-white/50 italic font-mono truncate">Synchronizing metadata and content flow...</p>
               </div>
-              <div className="flex gap-3">
-                <button onClick={() => setRetweetModal(null)} className="flex-1 py-3 font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
-                <button onClick={handleRetweetSubmit} className="flex-1 bg-jtweet-cyan text-jtweet-black font-bold py-3 rounded-2xl hover:brightness-110 shadow-cyan">Retweet</button>
+              
+              <div className="flex gap-4">
+                <button onClick={() => setRetweetModal(null)} className="flex-1 py-4 font-bold text-white/20 hover:text-white transition-all uppercase tracking-widest text-xs">Abort</button>
+                <button onClick={handleRetweetSubmit} className="flex-1 bg-jtweet-cyan text-jtweet-black font-bold py-4 rounded-2xl hover:brightness-110 shadow-cyan transition-all uppercase tracking-widest text-xs">Transmit</button>
               </div>
             </motion.div>
           </motion.div>
@@ -145,32 +156,42 @@ export default function HomeFeed() {
       </AnimatePresence>
 
       {/* Composer */}
-      <div className="p-4 border-b border-white/10">
-        <div className="flex gap-4">
-          <img src={user?.avatar} alt="Avatar" className="w-12 h-12 rounded-full h-12" referrerPolicy="no-referrer" />
+      <div className="p-6 border-b border-white/10 group/composer relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-jtweet-cyan/5 via-transparent to-transparent opacity-0 group-focus-within/composer:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+        <div className="flex gap-4 relative">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden glass border border-white/10 shrink-0 p-0.5 relative">
+            <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[14px]" referrerPolicy="no-referrer" />
+          </div>
           <div className="flex-1">
             <textarea 
-              className="w-full bg-transparent border-none focus:ring-0 text-xl placeholder-white/20 resize-none min-h-[100px]"
-              placeholder="Synchronize your thoughts..."
+              className="w-full bg-transparent border-none focus:ring-0 text-xl placeholder-white/10 resize-none min-h-[100px] transition-all"
+              placeholder="What signals are you transmitting?"
               value={newTweet}
               onChange={(e) => setNewTweet(e.target.value)}
             />
             
-            {mediaPreview && (
-              <div className="relative mb-4 group">
-                {selectedMedia?.type.startsWith('video') ? (
-                   <video src={mediaPreview} className="rounded-2xl w-full max-h-[300px] object-cover border border-white/10" controls />
-                ) : (
-                   <img src={mediaPreview} alt="Preview" className="rounded-2xl w-full max-h-[300px] object-cover border border-white/10" />
-                )}
-                <button 
-                  onClick={() => { setSelectedMedia(null); setMediaPreview(null); }}
-                  className="absolute top-2 right-2 p-1.5 bg-jtweet-black/60 backdrop-blur-md rounded-full text-white hover:bg-red-400 transition-colors"
+            <AnimatePresence>
+              {mediaPreview && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  className="relative mb-6 group/media rounded-3xl overflow-hidden glass border border-white/10 shadow-2xl"
                 >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+                  {selectedMedia?.type.startsWith('video') ? (
+                     <video src={mediaPreview} className="w-full max-h-[400px] object-contain bg-black" controls />
+                  ) : (
+                     <img src={mediaPreview} alt="Preview" className="w-full max-h-[400px] object-cover" />
+                  )}
+                  <button 
+                    onClick={() => { setSelectedMedia(null); setMediaPreview(null); }}
+                    className="absolute top-4 right-4 p-2 bg-jtweet-black/60 backdrop-blur-md rounded-xl text-white hover:bg-red-400 transition-all shadow-xl"
+                  >
+                    <X size={20} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             {suggestions.length > 0 && (
               <div className="mb-4 space-y-2">
                 <p className="text-[10px] font-bold text-jtweet-cyan flex items-center gap-1 uppercase tracking-widest bg-jtweet-cyan/10 w-fit px-2 py-0.5 rounded-full mb-2">
