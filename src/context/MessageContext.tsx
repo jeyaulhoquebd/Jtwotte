@@ -58,14 +58,17 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Listen to conversations
   useEffect(() => {
     if (!user) {
       setConversations([]);
+      setLoading(false);
       return;
     }
+    
+    setLoading(true);
 
     const q = query(
       collection(db, 'conversations'),
@@ -95,6 +98,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         } as Conversation);
       }
       setConversations(convos);
+      setLoading(false);
     });
 
     return unsubscribe;

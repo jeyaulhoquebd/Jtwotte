@@ -6,11 +6,14 @@ interface MediaRendererProps {
   media?: {
     youtubeId?: string;
     images?: string[];
+    type?: string;
   };
 }
 
 export default function MediaRenderer({ media }: MediaRendererProps) {
   if (!media) return null;
+
+  const isVideo = media.type === 'video' || (media.images && media.images.length === 1 && media.images[0].includes('data:video'));
 
   return (
     <div className="mt-3 space-y-3">
@@ -33,14 +36,18 @@ export default function MediaRenderer({ media }: MediaRendererProps) {
             <motion.div 
               key={idx}
               whileHover={{ scale: 1.02 }}
-              className="relative aspect-square rounded-2xl overflow-hidden glass border border-white/10"
+              className={`relative rounded-2xl overflow-hidden glass border border-white/10 ${media.images && media.images.length === 1 ? 'aspect-auto max-h-[500px]' : 'aspect-square'}`}
             >
-              <img 
-                src={img} 
-                alt={`Media ${idx}`} 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {isVideo ? (
+                <video src={img} controls className="w-full h-full object-cover" />
+              ) : (
+                <img 
+                  src={img} 
+                  alt={`Media ${idx}`} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              )}
             </motion.div>
           ))}
         </div>

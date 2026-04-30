@@ -33,6 +33,7 @@ export interface Notification {
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  loading: boolean;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
@@ -46,13 +47,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      setLoading(false);
       return;
     }
+    
+    setLoading(true);
 
     const q = query(
       collection(db, 'users', user.uid, 'notifications'),
@@ -87,6 +92,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       setNotifications(notifs);
       setUnreadCount(unread);
+      setLoading(false);
     });
 
     return unsubscribe;
@@ -146,6 +152,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     <NotificationContext.Provider value={{ 
       notifications, 
       unreadCount, 
+      loading,
       markAsRead, 
       markAllAsRead, 
       deleteNotification,

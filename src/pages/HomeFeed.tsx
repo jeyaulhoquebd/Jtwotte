@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Repeat2, ShieldCheck } from 'lucide-react';
+import { Sparkles, Repeat2, ShieldCheck, Image as ImageIcon, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTweets } from '../context/TweetContext';
 import { suggestTweet } from '../services/geminiService';
 import TweetCard from '../components/TweetCard';
+import { TweetSkeleton } from '../components/Skeleton';
 
 type FeedType = 'for-you' | 'following' | 'trending';
 
@@ -17,19 +18,60 @@ export default function HomeFeed() {
   const [retweetModal, setRetweetModal] = useState<{ id: string, name: string } | null>(null);
   const [retweetCaption, setRetweetCaption] = useState('');
   const [activeFeed, setActiveFeed] = useState<FeedType>('for-you');
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
 
   const filteredTweets = useMemo(() => {
+    let base = [...tweets];
+    
     if (activeFeed === 'trending') {
-      return [...tweets].sort((a, b) => (b.likesCount + b.retweetsCount) - (a.likesCount + a.retweetsCount));
+      return base.sort((a, b) => (b.likesCount + b.retweetsCount) - (a.likesCount + a.retweetsCount));
     }
-    return tweets;
+    
+    if (activeFeed === 'for-you') {
+      // Enhanced sorting algorithm: 
+      // score = (likes * 0.4) + (retweets * 0.3) + (replies * 0.2) + (impressions * 0.1)
+      // also factor in time decay
+      return base.sort((a, b) => {
+        const scoreA = (a.likesCount * 0.4) + (a.retweetsCount * 0.3) + (a.repliesCount * 0.2) + (a.impressions * 0.1);
+        const scoreB = (b.likesCount * 0.4) + (b.retweetsCount * 0.3) + (b.repliesCount * 0.2) + (b.impressions * 0.1);
+        
+        const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : Date.now();
+        const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : Date.now();
+        
+        // Weight relative to current time (simple linear decay)
+        const ageFactorA = Math.max(0, 1 - (Date.now() - timeA) / (1000 * 60 * 60 * 24)); // 24h decay
+        const ageFactorB = Math.max(0, 1 - (Date.now() - timeB) / (1000 * 60 * 60 * 24));
+        
+        return (scoreB * (0.5 + ageFactorB)) - (scoreA * (0.5 + ageFactorA));
+      });
+    }
+    
+    return base;
   }, [tweets, activeFeed]);
 
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedMedia(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setMediaPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handlePost = async () => {
-    if (!newTweet.trim()) return;
-    await postTweet(newTweet);
+    if (!newTweet.trim() && !mediaPreview) return;
+    
+    // In a real app, you'd upload the file to storage here and get a URL.
+    // We'll pass the mediaPreview (dataURL) for simulation or storage.
+    const media = mediaPreview ? { url: mediaPreview, type: selectedMedia?.type.startsWith('video') ? 'video' : 'image' } : undefined;
+    
+    await postTweet(newTweet, media);
     setNewTweet('');
     setSuggestions([]);
+    setSelectedMedia(null);
+    setMediaPreview(null);
   };
 
   const handleRetweetSubmit = async () => {
@@ -113,6 +155,22 @@ export default function HomeFeed() {
               value={newTweet}
               onChange={(e) => setNewTweet(e.target.value)}
             />
+            
+            {mediaPreview && (
+              <div className="relative mb-4 group">
+                {selectedMedia?.type.startsWith('video') ? (
+                   <video src={mediaPreview} className="rounded-2xl w-full max-h-[300px] object-cover border border-white/10" controls />
+                ) : (
+                   <img src={mediaPreview} alt="Preview" className="rounded-2xl w-full max-h-[300px] object-cover border border-white/10" />
+                )}
+                <button 
+                  onClick={() => { setSelectedMedia(null); setMediaPreview(null); }}
+                  className="absolute top-2 right-2 p-1.5 bg-jtweet-black/60 backdrop-blur-md rounded-full text-white hover:bg-red-400 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
             {suggestions.length > 0 && (
               <div className="mb-4 space-y-2">
                 <p className="text-[10px] font-bold text-jtweet-cyan flex items-center gap-1 uppercase tracking-widest bg-jtweet-cyan/10 w-fit px-2 py-0.5 rounded-full mb-2">
@@ -126,16 +184,22 @@ export default function HomeFeed() {
               </div>
             )}
             <div className="flex items-center justify-between pt-4 border-t border-white/5">
-              <button 
-                onClick={handleSuggest}
-                disabled={isSuggesting}
-                className="p-2 transition-all disabled:opacity-50 text-jtweet-cyan hover:bg-jtweet-cyan/10 rounded-full"
-              >
-                {isSuggesting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles size={20} /></motion.div> : <Sparkles size={20} />}
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={handleSuggest}
+                  disabled={isSuggesting}
+                  className="p-2 transition-all disabled:opacity-50 text-jtweet-cyan hover:bg-jtweet-cyan/10 rounded-full"
+                >
+                  {isSuggesting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles size={20} /></motion.div> : <Sparkles size={20} />}
+                </button>
+                <label className="p-2 cursor-pointer text-jtweet-cyan hover:bg-jtweet-cyan/10 rounded-full transition-all">
+                   <ImageIcon size={20} />
+                   <input type="file" className="hidden" accept="image/*,video/*" onChange={handleMediaSelect} />
+                </label>
+              </div>
               <button 
                 onClick={handlePost}
-                disabled={!newTweet.trim() || loading}
+                disabled={(!newTweet.trim() && !mediaPreview) || loading}
                 className="bg-white text-jtweet-black font-bold px-8 py-2 rounded-full hover:scale-105 active:scale-95 disabled:opacity-50 transition-all shadow-white/20 shadow-lg"
               >
                 Broadcast
@@ -147,10 +211,11 @@ export default function HomeFeed() {
 
       {/* Feed List */}
       <div className="divide-y divide-white/5">
-        {loading ? (
-          <div className="p-12 text-center text-white/20">
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="inline-block"><Repeat2 size={32} /></motion.div>
-            <p className="mt-4 font-display font-medium tracking-widest text-[10px] uppercase">Retrieving Pulse Data...</p>
+        {loading && tweets.length === 0 ? (
+          <div className="space-y-0">
+            <TweetSkeleton />
+            <TweetSkeleton />
+            <TweetSkeleton />
           </div>
         ) : (
           <AnimatePresence mode="popLayout">

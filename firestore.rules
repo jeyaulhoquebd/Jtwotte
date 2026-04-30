@@ -61,8 +61,7 @@ service cloud.firestore {
 
     match /tweets/{tweetId} {
       allow read: if true;
-      allow create: if isSignedIn() && isEmailVerified() 
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+      allow create: if isSignedIn() 
         && isValidTweet(incoming());
       allow update: if isSignedIn() && (
         isAdmin()

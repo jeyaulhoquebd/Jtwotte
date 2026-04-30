@@ -105,7 +105,7 @@ interface Comment {
 interface TweetContextType {
   tweets: Tweet[];
   loading: boolean;
-  postTweet: (content: string) => Promise<void>;
+  postTweet: (content: string, media?: { url: string, type: string }) => Promise<void>;
   retweet: (originalTweetId: string, content?: string) => Promise<void>;
   toggleLike: (tweetId: string) => Promise<void>;
   deleteTweet: (tweetId: string) => Promise<void>;
@@ -208,13 +208,13 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const postTweet = async (content: string) => {
+  const postTweet = async (content: string, pMedia?: { url: string, type: string }) => {
     if (!user) return;
 
     const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const imageRegex = /(https?:\/\/[\w\-\.]+(?:\/|[\w\-\.\/]+)\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[\w\-\.\&\=]+)?)/gi;
 
-    let media: any = {};
+    let media: any = pMedia ? { images: [pMedia.url], type: pMedia.type } : {};
     let cleanContent = content;
 
     const ytMatch = cleanContent.match(youtubeRegex);

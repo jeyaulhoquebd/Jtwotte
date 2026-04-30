@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageSkeleton } from '../components/Skeleton';
 
 export default function MessagesPage() {
   const { conversations, activeConversation, setActiveConversation, messages, sendMessage, loading } = useMessages();
@@ -62,27 +63,36 @@ export default function MessagesPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-           {conversations.map((conv) => (
-             <button 
-               key={conv.id}
-               onClick={() => setActiveConversation(conv)}
-               className={`w-full p-4 flex gap-4 hover:bg-white/5 transition-all text-left ${activeConversation?.id === conv.id ? 'bg-white/5' : ''}`}
-             >
-                <div className="relative">
-                   <img src={conv.recipient?.avatar} className="w-12 h-12 rounded-full border border-white/10" />
-                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-jtweet-black" />
-                </div>
-                <div className="flex-1 min-w-0">
-                   <div className="flex justify-between items-baseline">
-                      <h4 className="font-bold text-sm truncate">{conv.recipient?.name}</h4>
-                      <span className="text-[10px] text-white/20">{formatDistanceToNow(conv.updatedAt?.toDate() || new Date(), { addSuffix: false })}</span>
-                   </div>
-                   <p className="text-xs text-white/40 truncate mt-1">
-                      {conv.lastMessageSenderId === user?.uid ? 'You: ' : ''}{conv.lastMessage || 'No signals yet'}
-                   </p>
-                </div>
-             </button>
-           ))}
+           {loading && conversations.length === 0 ? (
+             <div className="space-y-0">
+               <MessageSkeleton />
+               <MessageSkeleton />
+               <MessageSkeleton />
+               <MessageSkeleton />
+             </div>
+           ) : (
+             conversations.map((conv) => (
+               <button 
+                 key={conv.id}
+                 onClick={() => setActiveConversation(conv)}
+                 className={`w-full p-4 flex gap-4 hover:bg-white/5 transition-all text-left ${activeConversation?.id === conv.id ? 'bg-white/5' : ''}`}
+               >
+                  <div className="relative">
+                     <img src={conv.recipient?.avatar} className="w-12 h-12 rounded-full border border-white/10" />
+                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-jtweet-black" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                     <div className="flex justify-between items-baseline">
+                        <h4 className="font-bold text-sm truncate">{conv.recipient?.name}</h4>
+                        <span className="text-[10px] text-white/20">{formatDistanceToNow(conv.updatedAt?.toDate() || new Date(), { addSuffix: false })}</span>
+                     </div>
+                     <p className="text-xs text-white/40 truncate mt-1">
+                        {conv.lastMessageSenderId === user?.uid ? 'You: ' : ''}{conv.lastMessage || 'No signals yet'}
+                     </p>
+                  </div>
+               </button>
+             ))
+           )}
         </div>
       </div>
 

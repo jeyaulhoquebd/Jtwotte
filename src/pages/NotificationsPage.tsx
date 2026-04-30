@@ -15,9 +15,10 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { NotificationSkeleton } from '../components/Skeleton';
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, loading } = useNotifications();
 
   return (
     <div className="min-h-screen">
@@ -39,18 +40,27 @@ export default function NotificationsPage() {
       </header>
 
       <div className="divide-y divide-white/5">
-        <AnimatePresence initial={false}>
-          {notifications.map((notif) => (
-            <NotificationItem 
-               key={notif.id} 
-               notif={notif} 
-               onRead={() => markAsRead(notif.id)} 
-               onDelete={() => deleteNotification(notif.id)} 
-            />
-          ))}
-        </AnimatePresence>
+        {loading && notifications.length === 0 ? (
+          <div className="space-y-0">
+            <NotificationSkeleton />
+            <NotificationSkeleton />
+            <NotificationSkeleton />
+            <NotificationSkeleton />
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {notifications.map((notif) => (
+              <NotificationItem 
+                 key={notif.id} 
+                 notif={notif} 
+                 onRead={() => markAsRead(notif.id)} 
+                 onDelete={() => deleteNotification(notif.id)} 
+              />
+            ))}
+          </AnimatePresence>
+        )}
         
-        {notifications.length === 0 && (
+        {!loading && notifications.length === 0 && (
           <div className="p-20 text-center space-y-4">
              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto text-white/20">
                 <Bell size={32} />
