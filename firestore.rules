@@ -29,14 +29,17 @@ service cloud.firestore {
         && data.email is string && data.email.size() <= 100
         && data.avatar is string && data.avatar.size() <= 500
         && (data.get('bio', '') is string && data.get('bio', '').size() <= 160)
-        && (data.get('role', 'user') in ['user', 'admin'])
-        && data.createdAt == request.time;
+        && (data.get('role', 'user') in ['user', 'admin']);
+    }
+
+    function isExistingUser(userId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(userId));
     }
 
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time;
       allow update: if (isOwner(userId) || isAdmin()) 
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt
@@ -57,7 +60,7 @@ service cloud.firestore {
 
     match /tweets/{tweetId} {
       allow read: if true;
-      allow create: if isSignedIn() && isEmailVerified() && isValidUser(get(/databases/$(database)/documents/users/$(request.auth.uid)).data) && isValidTweet(incoming());
+      allow create: if isSignedIn() && isExistingUser(request.auth.uid) && isValidTweet(incoming());
       allow update: if isSignedIn() && (
         isAdmin()
         || (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'retweetsCount', 'repliesCount', 'impressions']))
@@ -72,7 +75,7 @@ service cloud.firestore {
 
       match /comments/{commentId} {
         allow read: if true;
-        allow create: if isSignedIn() && isEmailVerified() && incoming().authorId == request.auth.uid;
+        allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
         allow update, delete: if isOwner(existing().authorId) || isAdmin();
       }
     }

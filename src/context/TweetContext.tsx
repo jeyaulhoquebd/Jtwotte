@@ -12,10 +12,58 @@ import {
   setDoc,
   deleteDoc,
   getDoc,
-  getDocs
+  getDocs,
+  getDocFromServer
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export interface Tweet {
   id: string;
@@ -73,54 +121,72 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // CRITICAL CONSTRAINT: Test connection
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+
     // Listen to ALL tweets
     const q = query(collection(db, 'tweets'), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const tweetList: Tweet[] = [];
-      const authorCache: Record<string, any> = {};
+      try {
+        const tweetList: Tweet[] = [];
+        const authorCache: Record<string, any> = {};
 
-      for (const d of snapshot.docs) {
-        const data = d.data();
-        const authorId = data.authorId;
-        
-        let authorData = authorCache[authorId];
-        if (!authorData) {
-          const userSnap = await getDoc(doc(db, 'users', authorId));
-          authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
-          const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
-          authorData.handle = `@${baseHandle}`;
-          authorCache[authorId] = authorData;
-        }
-
-        let originalTweet = null;
-        if (data.type === 'retweet' && data.originalTweetId) {
-          const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
-          if (origSnap.exists()) {
-             const origData = origSnap.data();
-             const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
-             const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
-             const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
-             originalTweet = {
-               id: origSnap.id,
-               ...origData,
-               author: {
-                 name: origAuthorData.name,
-                 avatar: origAuthorData.avatar,
-                 handle: `@${origBaseHandle}`
-               }
-             };
+        for (const d of snapshot.docs) {
+          const data = d.data();
+          const authorId = data.authorId;
+          
+          let authorData = authorCache[authorId];
+          if (!authorData) {
+            const userSnap = await getDoc(doc(db, 'users', authorId));
+            authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
+            const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
+            authorData.handle = `@${baseHandle}`;
+            authorCache[authorId] = authorData;
           }
-        }
 
-        tweetList.push({
-          id: d.id,
-          ...data,
-          author: authorData,
-          originalTweet
-        } as Tweet);
+          let originalTweet = null;
+          if (data.type === 'retweet' && data.originalTweetId) {
+            const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
+            if (origSnap.exists()) {
+               const origData = origSnap.data();
+               const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
+               const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
+               const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
+               originalTweet = {
+                 id: origSnap.id,
+                 ...origData,
+                 author: {
+                   name: origAuthorData.name,
+                   avatar: origAuthorData.avatar,
+                   handle: `@${origBaseHandle}`
+                 }
+               };
+            }
+          }
+
+          tweetList.push({
+            id: d.id,
+            ...data,
+            author: authorData,
+            originalTweet
+          } as Tweet);
+        }
+        setTweets(tweetList);
+        setLoading(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'tweets');
       }
-      setTweets(tweetList);
-      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'tweets');
     });
 
     return unsubscribe;
@@ -149,103 +215,130 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    await addDoc(collection(db, 'tweets'), {
-      authorId: user.uid,
-      content: cleanContent,
-      timestamp: serverTimestamp(),
-      type: 'tweet',
-      likesCount: 0,
-      retweetsCount: 0,
-      repliesCount: 0,
-      impressions: 0,
-      media: Object.keys(media).length > 0 ? media : null
-    });
+    try {
+      await addDoc(collection(db, 'tweets'), {
+        authorId: user.uid,
+        content: cleanContent,
+        timestamp: serverTimestamp(),
+        type: 'tweet',
+        likesCount: 0,
+        retweetsCount: 0,
+        repliesCount: 0,
+        impressions: 0,
+        media: Object.keys(media).length > 0 ? media : null
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'tweets');
+    }
   };
 
   const deleteTweet = async (tweetId: string) => {
     if (!user) return;
-    await deleteDoc(doc(db, 'tweets', tweetId));
+    try {
+      await deleteDoc(doc(db, 'tweets', tweetId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `tweets/${tweetId}`);
+    }
   };
 
   const addComment = async (tweetId: string, content: string) => {
     if (!user) return;
-    await addDoc(collection(db, 'tweets', tweetId, 'comments'), {
-      authorId: user.uid,
-      content,
-      timestamp: serverTimestamp(),
-      tweetId
-    });
-    await updateDoc(doc(db, 'tweets', tweetId), {
-      repliesCount: increment(1)
-    });
+    const path = `tweets/${tweetId}/comments`;
+    try {
+      await addDoc(collection(db, 'tweets', tweetId, 'comments'), {
+        authorId: user.uid,
+        content,
+        timestamp: serverTimestamp(),
+        tweetId
+      });
+      await updateDoc(doc(db, 'tweets', tweetId), {
+        repliesCount: increment(1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
   };
 
   const getComments = async (tweetId: string): Promise<Comment[]> => {
+    const path = `tweets/${tweetId}/comments`;
     const q = query(collection(db, 'tweets', tweetId, 'comments'), orderBy('timestamp', 'asc'));
-    const snapshot = await getDocs(q);
-    const commentList: Comment[] = [];
-    const authorCache: Record<string, any> = {};
+    try {
+      const snapshot = await getDocs(q);
+      const commentList: Comment[] = [];
+      const authorCache: Record<string, any> = {};
 
-    for (const d of snapshot.docs) {
-      const data = d.data();
-      const authorId = data.authorId;
-      
-      let authorData = authorCache[authorId];
-      if (!authorData) {
-        const userSnap = await getDoc(doc(db, 'users', authorId));
-        authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '' };
-        authorCache[authorId] = authorData;
-      }
-
-      commentList.push({
-        id: d.id,
-        tweetId,
-        authorId,
-        content: data.content,
-        timestamp: data.timestamp,
-        author: {
-          name: authorData.name,
-          avatar: authorData.avatar
+      for (const d of snapshot.docs) {
+        const data = d.data();
+        const authorId = data.authorId;
+        
+        let authorData = authorCache[authorId];
+        if (!authorData) {
+          const userSnap = await getDoc(doc(db, 'users', authorId));
+          authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '' };
+          authorCache[authorId] = authorData;
         }
-      });
+
+        commentList.push({
+          id: d.id,
+          tweetId,
+          authorId,
+          content: data.content,
+          timestamp: data.timestamp,
+          author: {
+            name: authorData.name,
+            avatar: authorData.avatar
+          }
+        });
+      }
+      return commentList;
+    } catch (error) {
+       handleFirestoreError(error, OperationType.GET, path);
+       return [];
     }
-    return commentList;
   };
 
   const retweet = async (originalTweetId: string, content?: string) => {
     if (!user) return;
     
-    // 1. Create the retweet document
-    await addDoc(collection(db, 'tweets'), {
-      authorId: user.uid,
-      content: content || '',
-      timestamp: serverTimestamp(),
-      type: 'retweet',
-      originalTweetId,
-      likesCount: 0,
-      retweetsCount: 0,
-      repliesCount: 0
-    });
+    try {
+      // 1. Create the retweet document
+      await addDoc(collection(db, 'tweets'), {
+        authorId: user.uid,
+        content: content || '',
+        timestamp: serverTimestamp(),
+        type: 'retweet',
+        originalTweetId,
+        likesCount: 0,
+        retweetsCount: 0,
+        repliesCount: 0
+      });
 
-    // 2. Increment the retweet count on the original
-    const tweetRef = doc(db, 'tweets', originalTweetId);
-    await updateDoc(tweetRef, {
-      retweetsCount: increment(1)
-    });
+      // 2. Increment the retweet count on the original
+      const tweetRef = doc(db, 'tweets', originalTweetId);
+      await updateDoc(tweetRef, {
+        retweetsCount: increment(1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'tweets');
+    }
   };
 
   const toggleLike = async (tweetId: string) => {
     if (!user) return;
     const likeRef = doc(db, 'tweets', tweetId, 'likes', user.uid);
-    const likeSnap = await getDoc(likeRef);
     const tweetRef = doc(db, 'tweets', tweetId);
-
-    if (likeSnap.exists()) {
-      await deleteDoc(likeRef);
-      await updateDoc(tweetRef, { likesCount: increment(-1) });
-    } else {
-      await setDoc(likeRef, { createdAt: serverTimestamp() });
-      await updateDoc(tweetRef, { likesCount: increment(1) });
+    
+    try {
+      const likeSnap = await getDoc(likeRef);
+      if (likeSnap.exists()) {
+        await deleteDoc(likeRef);
+        await updateDoc(tweetRef, { likesCount: increment(-1) });
+      } else {
+        await setDoc(likeRef, { createdAt: serverTimestamp() });
+        await updateDoc(tweetRef, { likesCount: increment(1) });
+      }
+    } catch (error) {
+       handleFirestoreError(error, OperationType.WRITE, `tweets/${tweetId}/likes/${user.uid}`);
     }
   };
 
