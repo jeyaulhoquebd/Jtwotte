@@ -13,11 +13,18 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
+import { useMessages } from '../context/MessageContext';
 import Logo from '../components/Logo';
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { conversations } = useMessages();
   const navigate = useNavigate();
+
+  // Simple unread calculation for messages based on conversations
+  const unreadMessagesCount = conversations.filter(c => c.lastMessageSenderId !== user?.uid).length;
 
   const handleLogout = async () => {
     await logout();
@@ -40,8 +47,18 @@ export default function Layout() {
               className="text-jtweet-cyan border-jtweet-cyan/20 bg-jtweet-cyan/5" 
             />
           )}
-          <NavItem to="/notifications" icon={<Bell size={24} />} label="Notifications" />
-          <NavItem to="/messages" icon={<Mail size={24} />} label="Messages" />
+          <NavItem 
+            to="/notifications" 
+            icon={<Bell size={24} />} 
+            label="Notifications" 
+            badge={unreadCount}
+          />
+          <NavItem 
+            to="/messages" 
+            icon={<Mail size={24} />} 
+            label="Messages" 
+            badge={unreadMessagesCount > 0 ? 1 : 0} // Simplify messaging badge for now
+          />
           <NavItem to={`/profile/${user?.uid}`} icon={<User size={24} />} label="Profile" />
           <NavItem to="/settings" icon={<Settings size={24} />} label="Settings" />
         </nav>
@@ -105,36 +122,46 @@ export default function Layout() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 glass h-16 flex items-center justify-around z-50 border-t border-white/10">
         <MobileNavItem to="/" icon={<Home size={24} />} />
         <MobileNavItem to="/explore" icon={<Search size={24} />} />
-        <MobileNavItem to="/notifications" icon={<Bell size={24} />} />
-        <MobileNavItem to="/messages" icon={<Mail size={24} />} />
+        <MobileNavItem to="/notifications" icon={<Bell size={24} />} badge={unreadCount} />
+        <MobileNavItem to="/messages" icon={<Mail size={24} />} badge={unreadMessagesCount > 0 ? 1 : 0} />
       </nav>
     </div>
   );
 }
 
-function NavItem({ to, icon, label, className }: { to: string, icon: ReactNode, label: string, className?: string }) {
+function NavItem({ to, icon, label, className, badge }: { to: string, icon: ReactNode, label: string, className?: string, badge?: number }) {
   return (
     <NavLink 
       to={to} 
-      className={({ isActive }) => `flex items-center gap-4 p-3 px-4 rounded-full transition-all group ${className} ${isActive ? 'font-bold bg-white/5 text-jtweet-cyan' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+      className={({ isActive }) => `flex items-center gap-4 p-3 px-4 rounded-full transition-all group relative ${className} ${isActive ? 'font-bold bg-white/5 text-jtweet-cyan' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
     >
       {({ isActive }) => (
         <>
           <span className={`${isActive ? 'cyan-glow' : 'group-hover:scale-110 transition-transform'}`}>{icon}</span>
           <span className="text-lg">{label}</span>
+          {badge && badge > 0 && (
+            <span className="absolute left-8 top-2 min-w-[20px] h-5 bg-jtweet-cyan text-jtweet-black text-[10px] font-bold rounded-full flex items-center justify-center shadow-cyan border-2 border-jtweet-black">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
         </>
       )}
     </NavLink>
   );
 }
 
-function MobileNavItem({ to, icon }: { to: string, icon: ReactNode }) {
+function MobileNavItem({ to, icon, badge }: { to: string, icon: ReactNode, badge?: number }) {
   return (
     <NavLink 
       to={to} 
-      className={({ isActive }) => `p-2 rounded-full transition-all ${isActive ? 'text-jtweet-cyan' : 'text-white/40'}`}
+      className={({ isActive }) => `p-2 rounded-full transition-all relative ${isActive ? 'text-jtweet-cyan' : 'text-white/40'}`}
     >
       {icon}
+      {badge && badge > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-jtweet-cyan text-jtweet-black text-[8px] font-bold rounded-full flex items-center justify-center shadow-cyan">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </NavLink>
   );
 }

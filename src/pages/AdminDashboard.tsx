@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTweets } from '../context/TweetContext';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { 
   Users, 
   MessageSquare, 
@@ -9,7 +10,8 @@ import {
   TrendingUp, 
   Activity,
   ArrowUpRight,
-  ShieldCheck
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -27,10 +29,22 @@ const data = [
 export default function AdminDashboard() {
   const { tweets } = useTweets();
   const { user } = useAuth();
+  const { broadcastMessage } = useNotifications();
+  const [broadcastText, setBroadcastText] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   if (user?.role !== 'admin') {
     return <div className="p-8 text-center text-red-400 font-bold">Unauthorized Access: Neural Block Active</div>;
   }
+
+  const handleBroadcast = async () => {
+    if (!broadcastText.trim()) return;
+    setIsBroadcasting(true);
+    await broadcastMessage(broadcastText);
+    setBroadcastText('');
+    setIsBroadcasting(false);
+    alert("Global transmission successful.");
+  };
 
   return (
     <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -124,11 +138,29 @@ export default function AdminDashboard() {
                <p className="text-white/40 text-sm">Advanced platform-wide administrative functions.</p>
             </div>
          </div>
-         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <AdminTool label="Global Notice" />
-            <AdminTool label="Purge Cache" />
-            <AdminTool label="Sync Nodes" />
-            <AdminTool label="Export Data" />
+         <div className="space-y-6">
+            <div className="flex gap-4">
+              <input 
+                type="text" 
+                placeholder="Synchronize global announcement..." 
+                className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 focus:ring-1 focus:ring-jtweet-cyan/50 text-sm"
+                value={broadcastText}
+                onChange={(e) => setBroadcastText(e.target.value)}
+              />
+              <button 
+                onClick={handleBroadcast}
+                disabled={isBroadcasting}
+                className="bg-jtweet-cyan text-jtweet-black font-bold px-6 py-3 rounded-2xl hover:shadow-cyan transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isBroadcasting ? "Syncing..." : <><Send size={18} /> Broadcast</>}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <AdminTool label="Global Notice" active />
+               <AdminTool label="Purge Cache" />
+               <AdminTool label="Sync Nodes" />
+               <AdminTool label="Export Data" />
+            </div>
          </div>
       </div>
     </div>
@@ -171,9 +203,9 @@ function HealthLine({ label, value, status }: { label: string, value: string, st
   );
 }
 
-function AdminTool({ label }: { label: string }) {
+function AdminTool({ label, active }: { label: string, active?: boolean }) {
   return (
-    <button className="p-4 glass rounded-2xl border-white/5 hover:border-jtweet-cyan/30 hover:bg-jtweet-cyan/10 transition-all font-bold text-xs uppercase tracking-widest">
+    <button className={`p-4 glass rounded-2xl transition-all font-bold text-xs uppercase tracking-widest ${active ? 'border-jtweet-cyan bg-jtweet-cyan/10 text-jtweet-cyan ring-1 ring-jtweet-cyan/20' : 'border-white/5 hover:border-jtweet-cyan/30 hover:bg-jtweet-cyan/10'}`}>
        {label}
     </button>
   );

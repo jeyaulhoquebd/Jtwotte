@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+import { useNotifications } from './NotificationContext';
 
 enum OperationType {
   CREATE = 'create',
@@ -117,8 +118,23 @@ const TweetContext = createContext<TweetContextType | undefined>(undefined);
 
 export function TweetProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { sendNotification } = useNotifications();
   const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [likedTweets, setLikedTweets] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLikedTweets(new Set());
+      return;
+    }
+    
+    // This is a bit expensive for a prototype but necessary for real-time like status
+    // In production, we might only check for visible tweets
+    const q = query(collection(db, 'tweets')); // We'd need a better way to find all liked by me
+    // Better: listen to a theoretical /users/{uid}/likes collection
+    // For now, let's just listen to context pulses or manage it locally
+  }, [user]);
 
   useEffect(() => {
     // CRITICAL CONSTRAINT: Test connection
@@ -254,6 +270,20 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       await updateDoc(doc(db, 'tweets', tweetId), {
         repliesCount: increment(1)
       });
+
+      // Notify tweet author
+      const tweetSnap = await getDoc(doc(db, 'tweets', tweetId));
+      if (tweetSnap.exists()) {
+        const tweetData = tweetSnap.data();
+        if (tweetData.authorId !== user.uid) {
+           await sendNotification(tweetData.authorId, {
+             type: 'comment',
+             senderId: user.uid,
+             relatedId: tweetId,
+             content: 'replied to your signal'
+           });
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -333,9 +363,29 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       if (likeSnap.exists()) {
         await deleteDoc(likeRef);
         await updateDoc(tweetRef, { likesCount: increment(-1) });
+        setLikedTweets(prev => {
+          const next = new Set(prev);
+          next.delete(tweetId);
+          return next;
+        });
       } else {
         await setDoc(likeRef, { createdAt: serverTimestamp() });
         await updateDoc(tweetRef, { likesCount: increment(1) });
+        setLikedTweets(prev => new Set(prev).add(tweetId));
+
+        // Notify tweet author
+        const tweetSnap = await getDoc(tweetRef);
+        if (tweetSnap.exists()) {
+          const tweetData = tweetSnap.data();
+          if (tweetData.authorId !== user.uid) {
+             await sendNotification(tweetData.authorId, {
+               type: 'like',
+               senderId: user.uid,
+               relatedId: tweetId,
+               content: 'energized your signal'
+             });
+          }
+        }
       }
     } catch (error) {
        handleFirestoreError(error, OperationType.WRITE, `tweets/${tweetId}/likes/${user.uid}`);
@@ -343,7 +393,7 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isLiked = (tweetId: string) => {
-    return false;
+    return likedTweets.has(tweetId);
   };
 
   return (
