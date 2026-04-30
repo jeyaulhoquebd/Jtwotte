@@ -34,12 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
+          const isOwner = fbUser.email === "jeyaulhoqeu2025@gmail.com";
           const newUser = {
             uid: fbUser.uid,
-            name: fbUser.displayName || 'Anonymous',
+            name: isOwner ? "Jeyaul Hoque" : (fbUser.displayName || 'Anonymous'),
             email: fbUser.email,
             avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
-            bio: '',
+            bio: isOwner ? "System Architect & Platform Owner" : '',
+            role: isOwner ? "admin" : "user",
             createdAt: serverTimestamp()
           };
           await setDoc(userRef, newUser);

@@ -9,7 +9,8 @@ import {
   Settings, 
   LogOut,
   Send,
-  MoreHorizontal
+  MoreHorizontal,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
@@ -31,6 +32,14 @@ export default function Layout() {
         <nav className="mt-8 space-y-2">
           <NavItem to="/" icon={<Home size={24} />} label="Home" />
           <NavItem to="/explore" icon={<Search size={24} />} label="Explore" />
+          {user?.role === 'admin' && (
+            <NavItem 
+              to="/admin" 
+              icon={<ShieldCheck size={24} />} 
+              label="Intelligence" 
+              className="text-jtweet-cyan border-jtweet-cyan/20 bg-jtweet-cyan/5" 
+            />
+          )}
           <NavItem to="/notifications" icon={<Bell size={24} />} label="Notifications" />
           <NavItem to="/messages" icon={<Mail size={24} />} label="Messages" />
           <NavItem to={`/profile/${user?.uid}`} icon={<User size={24} />} label="Profile" />
@@ -103,11 +112,11 @@ export default function Layout() {
   );
 }
 
-function NavItem({ to, icon, label }: { to: string, icon: ReactNode, label: string }) {
+function NavItem({ to, icon, label, className }: { to: string, icon: ReactNode, label: string, className?: string }) {
   return (
     <NavLink 
       to={to} 
-      className={({ isActive }) => `flex items-center gap-4 p-3 px-4 rounded-full transition-all group ${isActive ? 'font-bold bg-white/5 text-jtweet-cyan' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+      className={({ isActive }) => `flex items-center gap-4 p-3 px-4 rounded-full transition-all group ${className} ${isActive ? 'font-bold bg-white/5 text-jtweet-cyan' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
     >
       {({ isActive }) => (
         <>

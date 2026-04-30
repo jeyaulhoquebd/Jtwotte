@@ -16,44 +16,51 @@
     },
     "Tweet": {
       "title": "Tweet",
-      "description": "A microblog post",
+      "description": "A microblog post with media support",
       "type": "object",
       "properties": {
         "authorId": { "type": "string" },
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "type": { "type": "string", "enum": ["tweet", "retweet"] },
+        "type": { "type": "string", "enum": ["tweet", "retweet", "reply"] },
         "originalTweetId": { "type": "string" },
+        "media": {
+          "type": "object",
+          "properties": {
+            "youtubeId": { "type": "string" },
+            "images": { "type": "array", "items": { "type": "string" } }
+          }
+        },
         "likesCount": { "type": "number" },
         "retweetsCount": { "type": "number" },
-        "repliesCount": { "type": "number" }
+        "repliesCount": { "type": "number" },
+        "impressions": { "type": "number" }
       },
       "required": ["authorId", "content", "timestamp", "type"]
     },
-    "Like": {
-      "title": "Like",
-      "description": "User like on a tweet",
+    "Comment": {
+      "title": "Comment",
+      "description": "A reply to a tweet",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
         "tweetId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "authorId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "parentId": { "type": "string" }
       },
-      "required": ["userId", "tweetId", "createdAt"]
+      "required": ["tweetId", "authorId", "content", "timestamp"]
     },
-    "Notification": {
-      "title": "Notification",
-      "description": "System notification for users",
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Platform-wide growth metrics",
       "type": "object",
       "properties": {
-        "recipientId": { "type": "string" },
-        "senderId": { "type": "string" },
-        "type": { "type": "string", "enum": ["like", "comment", "retweet", "follow"] },
-        "tweetId": { "type": "string" },
-        "read": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["recipientId", "senderId", "type", "read", "createdAt"]
+        "dau": { "type": "number" },
+        "mau": { "type": "number" },
+        "totalTweets": { "type": "number" },
+        "date": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -69,9 +76,17 @@
       "schema": "Like",
       "description": "Individual likes on a tweet"
     },
+    "/tweets/{tweetId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Threaded replies"
+    },
     "/users/{userId}/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "User-specific notifications"
+    },
+    "/analytics/{date}": {
+      "schema": "Analytics",
+      "description": "System metrics"
     }
   }
 }
