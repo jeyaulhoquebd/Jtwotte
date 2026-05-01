@@ -91,7 +91,7 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                     <span className="text-[8px] font-bold text-yellow-400 uppercase tracking-tighter">Founder</span>
                   </div>
                 )}
-                {tweet.author?.role === 'admin' && !isFounder && <ShieldCheck size={14} className="text-jtweet-cyan shadow-cyan" />}
+                {(tweet.author?.role === 'admin' || tweet.author?.role === 'founder') && <BadgeCheck size={14} className="text-blue-400 fill-blue-400/20" />}
                 {tweet.author?.role === 'user' && (tweet.likesCount || 0) > 100 && <BadgeCheck size={14} className="text-jtweet-cyan" />}
               </Link>
               <span className="text-white/30 font-mono text-xs">@{tweet.author?.handle?.replace('@', '') || 'neural_node'}</span>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Repeat2, ShieldCheck, Image as ImageIcon, X } from 'lucide-react';
+import { Sparkles, Repeat2, BadgeCheck, Image as ImageIcon, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTweets } from '../context/TweetContext';
 import { suggestTweet } from '../services/geminiService';
@@ -96,7 +96,7 @@ export default function HomeFeed() {
         <div className="p-4 flex items-center justify-between">
           <h2 className="text-xl font-display font-bold tracking-tight flex items-center gap-2 bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent">
             Neural Feed
-            {user?.role === 'admin' && <ShieldCheck size={18} className="text-jtweet-cyan shadow-cyan" />}
+            {(user?.role === 'admin' || user?.role === 'founder') && <BadgeCheck size={18} className="text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] fill-blue-400/20" />}
           </h2>
           <div className="flex gap-2">
              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-jtweet-cyan/5 border border-jtweet-cyan/20">

@@ -114,6 +114,7 @@ interface TweetContextType {
   retweet: (originalTweetId: string, content?: string) => Promise<void>;
   toggleLike: (tweetId: string) => Promise<void>;
   deleteTweet: (tweetId: string) => Promise<void>;
+  deleteAllTweets: () => Promise<void>;
   addComment: (tweetId: string, content: string) => Promise<void>;
   getComments: (tweetId: string) => Promise<Comment[]>;
   isLiked: (tweetId: string) => boolean;
@@ -133,16 +134,9 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       setLikedTweets(new Set());
       return;
     }
-    
-    // This is a bit expensive for a prototype but necessary for real-time like status
-    // In production, we might only check for visible tweets
-    const q = query(collection(db, 'tweets')); // We'd need a better way to find all liked by me
-    // Better: listen to a theoretical /users/{uid}/likes collection
-    // For now, let's just listen to context pulses or manage it locally
   }, [user]);
 
   useEffect(() => {
-    // CRITICAL CONSTRAINT: Test connection
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
@@ -154,16 +148,12 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     };
     testConnection();
 
-    // Listen to ALL tweets
     const q = query(collection(db, 'tweets'), orderBy('timestamp', 'desc'));
     const globalAuthorCache: Record<string, any> = {};
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
         const docs = snapshot.docs;
-        const tweetList: Tweet[] = [];
-        
-        // Batch fetch authors and original tweets to avoid N+1 issues and connection saturation
         const promises = docs.map(async (d) => {
           const data = d.data();
           const authorId = data.authorId;
@@ -177,7 +167,6 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
               authorData.handle = `@${baseHandle}`;
               globalAuthorCache[authorId] = authorData;
             } catch (e) {
-              console.warn("Failed to fetch author", authorId, e);
               authorData = { name: 'Unknown', avatar: '', handle: '@unknown' };
             }
           }
@@ -201,9 +190,7 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
                    }
                  };
               }
-            } catch (e) {
-               console.warn("Failed to fetch original tweet", data.originalTweetId, e);
-            }
+            } catch (e) {}
           }
 
           return {
@@ -231,7 +218,6 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     const parsed = parseMediaLinks(content);
-    
     let media: any = pMedia ? { images: [pMedia.url], type: pMedia.type } : {};
     
     if (parsed.youtubeId) {
@@ -244,11 +230,11 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     }
     if (parsed.tiktokId) {
       media.tiktokId = parsed.tiktokId;
-      media.originalUrl = `https://www.tiktok.com/embed/v2/${parsed.tiktokId}`;
+      media.originalUrl = `https://www.tiktok.com/video/${parsed.tiktokId}`;
     }
     if (parsed.instagramId) {
       media.instagramId = parsed.instagramId;
-      media.originalUrl = `https://www.instagram.com/p/${parsed.instagramId}/`;
+      media.originalUrl = `https://www.instagram.com/reels/${parsed.instagramId}/`;
     }
     if (parsed.imageUrls) {
       media.images = [...(media.images || []), ...parsed.imageUrls];
@@ -277,6 +263,32 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       await deleteDoc(doc(db, 'tweets', tweetId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `tweets/${tweetId}`);
+    }
+  };
+
+  const deleteAllTweets = async () => {
+    if (!user || (user.role !== 'admin' && user.role !== 'founder')) {
+      alert("Unauthorized: Only higher administrative nodes can initiate a purge.");
+      return;
+    }
+    
+    if (!confirm("CRITICAL ACTION: This will permanently erase ALL signals from the network. Proceed?")) {
+      return;
+    }
+
+    try {
+      const snapshot = await getDocs(collection(db, 'tweets'));
+      const batchSize = 100;
+      let count = 0;
+      
+      for (const d of snapshot.docs) {
+        await deleteDoc(doc(db, 'tweets', d.id));
+        count++;
+      }
+      
+      alert(`Purge complete. ${count} signals erased from history.`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'tweets');
     }
   };
 
@@ -427,6 +439,7 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       retweet, 
       toggleLike, 
       deleteTweet, 
+      deleteAllTweets,
       addComment, 
       getComments, 
       isLiked 

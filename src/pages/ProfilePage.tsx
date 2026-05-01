@@ -19,7 +19,8 @@ import {
   Heart,
   MessageSquare,
   Repeat2,
-  Crown
+  Crown,
+  BadgeCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import TweetCard from '../components/TweetCard';
@@ -109,7 +110,7 @@ export default function ProfilePage() {
                   <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Founder</span>
                 </div>
               )}
-              {profileUser.role === 'admin' && profileUser.role !== 'founder' && <ShieldCheck size={18} className="text-jtweet-cyan shadow-cyan" />}
+              {(profileUser.role === 'admin' || profileUser.role === 'founder') && <BadgeCheck size={18} className="text-blue-400 fill-blue-400/20" />}
            </h2>
            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{userTweets.length} Signal Nodes</p>
         </div>
@@ -135,9 +136,9 @@ export default function ProfilePage() {
                   <Crown size={20} className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
                 </div>
               )}
-              {profileUser.role === 'admin' && profileUser.role !== 'founder' && (
-                <div className="absolute bottom-2 right-2 bg-jtweet-black/80 backdrop-blur-md p-1.5 rounded-xl border border-jtweet-cyan/30">
-                  <ShieldCheck size={16} className="text-jtweet-cyan drop-shadow-[0_0_8px_rgba(0,255,242,0.5)]" />
+              {(profileUser.role === 'admin' || profileUser.role === 'founder') && (
+                <div className="absolute bottom-2 right-2 bg-jtweet-black/80 backdrop-blur-md p-1.5 rounded-xl border border-blue-400/30">
+                  <BadgeCheck size={16} className="text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                 </div>
               )}
             </div>

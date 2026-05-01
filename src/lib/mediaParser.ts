@@ -9,9 +9,9 @@ export interface ParsedMedia {
 }
 
 export function parseMediaLinks(content: string): ParsedMedia {
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/gi;
-  const facebookRegex = /(?:https?:\/\/)?(?:www\.)?(?:facebook\.com\/watch\/\?v=|facebook\.com\/video\.php\?v=|facebook\.com\/\w+\/videos\/)(\d+)/gi;
-  const tiktokRegex = /(?:https?:\/\/)?(?:www\.)?(?:tiktok\.com\/@[\w\.]+\/video\/|vm\.tiktok\.com\/|tiktok\.com\/t\/)([\w]{9,})/gi;
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/gi;
+  const facebookRegex = /(?:https?:\/\/)?(?:www\.)?(?:facebook\.com\/watch\/?\?v=|facebook\.com\/video\.php\?v=|facebook\.com\/\w+\/videos\/|facebook\.com\/share\/v\/|facebook\.com\/reels?\/)(\d+)/gi;
+  const tiktokRegex = /(?:https?:\/\/)?(?:www\.)?(?:tiktok\.com\/@[\w\.]+\/video\/|vm\.tiktok\.com\/|tiktok\.com\/t\/|tiktok\.com\/embed\/v2\/|vt\.tiktok\.com\/)([\w]{2,})/gi;
   const instagramRegex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:p|reels|reel)\/([a-zA-Z0-9_-]+)/gi;
   const imageRegex = /(https?:\/\/[\w\-\.]+(?:\/|[\w\-\.\/]+)\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[\w\-\.\&\=]+)?)/gi;
 
@@ -21,6 +21,14 @@ export function parseMediaLinks(content: string): ParsedMedia {
   let instagramId: string | undefined;
   const imageUrls: string[] = [];
   let cleanContent = content;
+
+  // Function to clean up after removal
+  const finalizeContent = (text: string) => {
+    return text
+      .replace(/\n{3,}/g, '\n\n') // No more than double newlines
+      .replace(/[ \t]{2,}/g, ' ')  // No double spaces
+      .trim();
+  };
 
   // Extract YouTube
   const ytMatches = [...content.matchAll(youtubeRegex)];
@@ -73,6 +81,6 @@ export function parseMediaLinks(content: string): ParsedMedia {
     tiktokId,
     instagramId,
     imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-    cleanContent: cleanContent.trim()
+    cleanContent: finalizeContent(cleanContent)
   };
 }

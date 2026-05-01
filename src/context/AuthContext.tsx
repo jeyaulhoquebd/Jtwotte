@@ -47,7 +47,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await setDoc(userRef, newUser);
           setUser(newUser);
         } else {
-          setUser(userSnap.data());
+          const userData = userSnap.data();
+          const isOwner = fbUser.email === "jeyaulhoque2025@gmail.com" || fbUser.email === "jeyaulbooks@gmail.com";
+          
+          // Auto-upgrade if email matches but role isn't founder
+          if (isOwner && userData.role !== 'founder') {
+            await setDoc(userRef, { ...userData, role: 'founder' }, { merge: true });
+            setUser({ ...userData, role: 'founder' });
+          } else {
+            setUser(userData);
+          }
         }
       } else {
         setUser(null);

@@ -73,14 +73,16 @@ const EmbedCard = ({
           <p className="text-white/40 text-[10px] uppercase tracking-widest leading-relaxed">This node may be restricted by source security protocols</p>
         </div>
         <motion.a
-          href={originalUrl}
+          href={originalUrl || '#'}
           target="_blank"
           rel="noopener noreferrer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="px-6 py-2.5 bg-gradient-to-r from-jtweet-cyan to-blue-500 text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(34,211,238,0.3)] flex items-center gap-2"
         >
-          <span className="flex items-center gap-2"><Share2 size={12} /> Sync on {label}</span>
+          <span className="flex items-center gap-2 transition-transform group-hover:translate-x-1">
+            <Share2 size={12} /> Watch on {label}
+          </span>
         </motion.a>
       </div>
     );
@@ -132,15 +134,15 @@ const EmbedCard = ({
         />
       )}
 
-      <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-20">
+      <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-all transform translate-y-0 z-20">
         <motion.a 
-          href={originalUrl} 
+          href={originalUrl || '#'} 
           target="_blank" 
           rel="noopener noreferrer"
-          whileHover={{ scale: 1.1 }}
+          whileHover={{ scale: 1.05 }}
           className="px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold flex items-center gap-2 hover:bg-jtweet-cyan hover:text-black transition-all"
         >
-          <Share2 size={12} /> Direct Node
+          <Share2 size={12} /> Watch on {label}
         </motion.a>
       </div>
     </div>
@@ -202,7 +204,7 @@ export default function MediaRenderer({ media }: MediaRendererProps) {
           originalUrl={`https://www.facebook.com/watch/?v=${media.facebookVideoId}`}
           label="Facebook"
           color="bg-blue-600"
-          getEmbedUrl={(id) => `https://www.facebook.com/plugins/video.php?href=https%3A%2F%2Fwww.facebook.com%2Ffacebook%2Fvideos%2F${id}%2F&show_text=0&autoplay=1`}
+          getEmbedUrl={(id, auto) => `https://www.facebook.com/plugins/video.php?href=https%3A%2F%2Fwww.facebook.com%2Fvideo.php%3Fv%3D${id}&show_text=0&autoplay=${auto ? 1 : 0}`}
         />
       )}
 
@@ -210,10 +212,10 @@ export default function MediaRenderer({ media }: MediaRendererProps) {
         <EmbedCard 
           type="tiktok"
           id={media.tiktokId}
-          originalUrl={`https://www.tiktok.com/embed/v2/${media.tiktokId}`}
+          originalUrl={`https://www.tiktok.com/video/${media.tiktokId}`}
           label="TikTok"
           color="bg-jtweet-black"
-          getEmbedUrl={(id) => `https://www.tiktok.com/embed/v2/${id}?autoplay=1`}
+          getEmbedUrl={(id) => `https://www.tiktok.com/embed/v2/${id}`}
         />
       )}
 
@@ -221,7 +223,7 @@ export default function MediaRenderer({ media }: MediaRendererProps) {
         <EmbedCard 
           type="instagram"
           id={media.instagramId}
-          originalUrl={`https://www.instagram.com/p/${media.instagramId}/`}
+          originalUrl={`https://www.instagram.com/reels/${media.instagramId}/`}
           label="Reels"
           color="bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600"
           getEmbedUrl={(id) => `https://www.instagram.com/p/${id}/embed/`}

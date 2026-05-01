@@ -11,7 +11,9 @@ import {
   Activity,
   ArrowUpRight,
   ShieldCheck,
-  Send
+  Send,
+  Trash2,
+  BadgeCheck
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -27,7 +29,7 @@ const data = [
 ];
 
 export default function AdminDashboard() {
-  const { tweets } = useTweets();
+  const { tweets, deleteAllTweets } = useTweets();
   const { user } = useAuth();
   const { broadcastMessage } = useNotifications();
   const [broadcastText, setBroadcastText] = useState('');
@@ -52,11 +54,17 @@ export default function AdminDashboard() {
          <div>
             <h1 className="text-3xl font-display font-bold tracking-tight flex items-center gap-2">
                Intelligence Hub
-               <ShieldCheck className="text-jtweet-cyan shadow-cyan" />
+               <BadgeCheck className="text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
             </h1>
             <p className="text-white/40 text-sm mt-1 uppercase tracking-widest font-bold">Root Protocol Interface</p>
          </div>
-         <div className="flex gap-2">
+         <div className="flex gap-4 items-center">
+            <button 
+              onClick={deleteAllTweets}
+              className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
+            >
+              <Trash2 size={12} /> Purge Network
+            </button>
             <div className="px-4 py-2 glass rounded-full border-white/10 flex items-center gap-2">
                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                <span className="text-xs font-bold uppercase tracking-wider">System Optimal</span>
