@@ -5,7 +5,7 @@ import { useTweets } from '../context/TweetContext';
 import { useSocial } from '../context/SocialContext';
 import { useMessages } from '../context/MessageContext';
 import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { 
   Calendar, 
   MapPin, 
@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const { followUser, unfollowUser, isFollowing, getFollowersCount, getFollowingCount } = useSocial();
   
   const [profileUser, setProfileUser] = useState<any>(null);
+  const [userTweets, setUserTweets] = useState<any[]>([]);
   const [following, setFollowing] = useState(false);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,22 @@ export default function ProfilePage() {
       setLoading(true);
       const userSnap = await getDoc(doc(db, 'users', uid));
       if (userSnap.exists()) {
-        setProfileUser(userSnap.data());
+        const userData = userSnap.data();
+        setProfileUser(userData);
+        
+        // Fetch user's tweets as requested
+        const tweetsQuery = query(
+          collection(db, 'tweets'),
+          where('authorId', '==', uid),
+          orderBy('timestamp', 'desc')
+        );
+        const tweetsSnap = await getDocs(tweetsQuery);
+        const fetchedTweets = tweetsSnap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(),
+          author: userData // Ensure author data is attached for TweetCard
+        } as any));
+        setUserTweets(fetchedTweets);
       }
       
       const [fol, followersCount, followingCount] = await Promise.all([
@@ -93,8 +109,6 @@ export default function ProfilePage() {
 
   if (!profileUser) return <div className="p-20 text-center text-white/40">Entity not found in current sector.</div>;
 
-  const userTweets = tweets.filter(t => t.authorId === uid);
-
   return (
     <div className="min-h-screen pb-20">
       <header className="sticky top-0 z-20 glass border-b border-white/5 p-4 flex items-center gap-6">
@@ -121,7 +135,7 @@ export default function ProfilePage() {
          {profileUser.cover ? (
            <img src={profileUser.cover} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000" alt="Cover" referrerPolicy="no-referrer" />
          ) : (
-           <div className="absolute inset-0 bg-gradient-to-br from-jtweet-cyan/20 via-jtweet-black to-jtweet-black flex items-center justify-center">
+           <div className="w-full h-full bg-white/5 flex items-center justify-center text-white/20">
               <Zap size={80} className="text-jtweet-cyan/5 animate-pulse" />
            </div>
          )}
@@ -146,14 +160,14 @@ export default function ProfilePage() {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end p-4 md:p-6 gap-2 md:gap-3 pt-3 md:pt-4">
+      <div className="flex flex-wrap justify-end p-4 md:p-6 gap-2 md:gap-3 pt-3 md:pt-4">
          {isMe ? (
            <>
              <button 
                onClick={() => setIsEditModalOpen(true)}
-               className="px-6 py-2.5 rounded-2xl border border-white/10 hover:border-jtweet-cyan/50 hover:bg-jtweet-cyan/5 transition-all text-xs font-bold uppercase tracking-widest group"
+               className="flex-1 md:flex-none px-4 md:px-6 py-2.5 rounded-2xl border border-white/10 hover:border-jtweet-cyan/50 hover:bg-jtweet-cyan/5 transition-all text-[10px] md:text-xs font-bold uppercase tracking-widest group whitespace-nowrap"
              >
-                <span className="flex items-center gap-2 group-hover:text-jtweet-cyan">
+                <span className="flex items-center justify-center gap-2 group-hover:text-jtweet-cyan">
                   <Edit3 size={14} /> Synchronize Profile
                 </span>
              </button>
@@ -171,7 +185,7 @@ export default function ProfilePage() {
              </button>
              <button 
                onClick={handleFollow}
-               className={`px-10 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${following ? 'border border-white/10 text-white/40 hover:border-red-400 hover:text-red-400 hover:bg-red-400/5' : 'bg-jtweet-cyan text-jtweet-black shadow-cyan hover:brightness-110 active:scale-95'}`}
+               className={`flex-1 md:flex-none px-6 md:px-10 py-3 rounded-2xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${following ? 'border border-white/10 text-white/40 hover:border-red-400 hover:text-red-400 hover:bg-red-400/5' : 'bg-jtweet-cyan text-jtweet-black shadow-cyan hover:brightness-110 active:scale-95'}`}
              >
                 {following ? 'Disengage' : 'Establish Link'}
              </button>
@@ -205,12 +219,12 @@ export default function ProfilePage() {
 
          <div className="flex gap-6 pt-4">
             <div className="flex items-center gap-1.5 group cursor-pointer">
-               <span className="font-bold text-white text-lg">{counts.following}</span>
-               <span className="text-xs text-white/40 uppercase font-bold group-hover:text-jtweet-cyan transition-colors">Following</span>
+               <span className="font-bold text-white text-lg group-hover:text-jtweet-cyan transition-colors">{counts.following}</span>
+               <span className="text-xs text-white/40 uppercase font-bold">Following</span>
             </div>
             <div className="flex items-center gap-1.5 group cursor-pointer">
-               <span className="font-bold text-white text-lg">{counts.followers}</span>
-               <span className="text-xs text-white/40 uppercase font-bold group-hover:text-jtweet-cyan transition-colors">Followers</span>
+               <span className="font-bold text-white text-lg group-hover:text-jtweet-cyan transition-colors">{counts.followers}</span>
+               <span className="text-xs text-white/40 uppercase font-bold">Followers</span>
             </div>
          </div>
       </div>

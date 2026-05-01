@@ -134,7 +134,7 @@ const EmbedCard = ({
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="z-10 w-14 h-14 md:w-16 md:h-16 rounded-full bg-jtweet-cyan/10 backdrop-blur-3xl border border-jtweet-cyan/30 flex items-center justify-center text-jtweet-cyan group-hover:scale-110 group-hover:bg-jtweet-cyan group-hover:text-black transition-all shadow-[0_0_40px_rgba(34,211,238,0.2)]"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-14 h-14 md:w-16 md:h-16 rounded-full bg-jtweet-cyan/10 backdrop-blur-3xl border border-jtweet-cyan/30 flex items-center justify-center text-jtweet-cyan group-hover:scale-110 group-hover:bg-jtweet-cyan group-hover:text-black transition-all shadow-[0_0_40px_rgba(34,211,238,0.2)]"
           >
             <Play size={24} fill="currentColor" className="md:w-7 md:h-7" />
           </motion.div>
@@ -164,6 +164,7 @@ const EmbedCard = ({
 
 const VideoElement = ({ src }: { src: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -171,12 +172,11 @@ const VideoElement = ({ src }: { src: string }) => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (videoRef.current) {
-            if (entry.isIntersecting) {
-              videoRef.current.play().catch(() => {});
-            } else {
-              videoRef.current.pause();
-            }
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            if (videoRef.current) videoRef.current.play().catch(() => {});
+          } else {
+            if (videoRef.current) videoRef.current.pause();
           }
         });
       },
@@ -187,7 +187,7 @@ const VideoElement = ({ src }: { src: string }) => {
     return () => observer.disconnect();
   }, []);
 
-  return <video ref={videoRef} src={src} controls className="w-full h-full object-cover" />;
+  return <video ref={videoRef} src={isInView ? src : undefined} controls className="w-full h-full object-cover" />;
 };
 
 export default function MediaRenderer({ media }: MediaRendererProps) {

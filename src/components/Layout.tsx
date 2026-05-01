@@ -31,7 +31,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const { conversations } = useMessages();
-  const { theme, toggleTheme, lastAction, undoAction } = useTweets();
+  const { theme, toggleTheme, lastAction, undoAction, dismissAction } = useTweets();
   const navigate = useNavigate();
 
   // Simple unread calculation for messages based on conversations
@@ -203,9 +203,9 @@ export default function Layout() {
             exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm"
           >
-            <div className="glass p-4 rounded-2xl border border-jtweet-cyan/30 shadow-cyan-lg flex items-center justify-between gap-4">
+            <div className="glass p-3 md:p-4 rounded-2xl border border-jtweet-cyan/30 shadow-cyan-lg flex flex-col sm:flex-row items-center sm:justify-between gap-3 md:gap-4 text-center sm:text-left">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-jtweet-cyan/10 flex items-center justify-center text-jtweet-cyan">
+                <div className="w-8 h-8 rounded-full bg-jtweet-cyan/10 flex items-center justify-center text-jtweet-cyan shrink-0">
                    {lastAction.type === 'reaction' ? <Zap size={16} /> : 
                     lastAction.type === 'post' ? <Send size={16} /> : 
                     <RotateCcw size={16} />}
@@ -219,12 +219,20 @@ export default function Layout() {
                    <p className="text-[10px] text-white/40">Undo your last interaction</p>
                 </div>
               </div>
-              <button 
-                onClick={undoAction}
-                className="bg-white text-black px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-jtweet-cyan transition-all"
-              >
-                Restore
-              </button>
+              <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+                <button 
+                  onClick={undoAction}
+                  className="flex-1 sm:flex-none bg-white text-black px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-jtweet-cyan transition-all"
+                >
+                  Restore
+                </button>
+                <button 
+                  onClick={dismissAction}
+                  className="flex-1 sm:flex-none text-white/40 hover:text-white px-2 py-1.5 font-bold text-[10px] uppercase tracking-widest transition-all"
+                >
+                  Close it
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

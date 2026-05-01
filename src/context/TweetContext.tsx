@@ -70,6 +70,7 @@ interface TweetContextType {
   getUserReaction: (tweetId: string) => ReactionType | null;
   lastAction: { type: string, data: any } | null;
   undoAction: () => Promise<void>;
+  dismissAction: () => void;
   customFilters: string[];
   addCustomFilter: (filter: string) => void;
   removeCustomFilter: (filter: string) => void;
@@ -561,6 +562,10 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const dismissAction = () => {
+    setLastAction(null);
+  };
+
   return (
     <TweetContext.Provider value={{ 
       tweets, 
@@ -580,6 +585,7 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       getUserReaction,
       lastAction,
       undoAction,
+      dismissAction,
       customFilters,
       addCustomFilter,
       removeCustomFilter

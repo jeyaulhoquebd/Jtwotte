@@ -203,20 +203,20 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
               <span className="text-white/30 font-mono text-xs">@{tweet.author?.handle?.replace('@', '') || 'neural_node'}</span>
               <span className="text-white/10">·</span>
               <span className="text-white/20 text-xs">{timestamp}</span>
-            </div>
-            <div className="flex items-center gap-2">
               {sentiment && (
-                <div className={`p-1 px-2 rounded-full border text-[8px] font-bold uppercase flex items-center gap-1 ${
+                <div className={`p-0.5 px-1.5 rounded-full border text-[7px] font-bold uppercase flex items-center gap-1 ${
                   sentiment === 'positive' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
                   sentiment === 'negative' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
                   'bg-white/5 border-white/10 text-white/40'
                 }`}>
-                  {sentiment === 'positive' && <Smile size={10} />}
-                  {sentiment === 'negative' && <Frown size={10} />}
-                  {sentiment === 'neutral' && <Meh size={10} />}
+                  {sentiment === 'positive' && <Smile size={8} />}
+                  {sentiment === 'negative' && <Frown size={8} />}
+                  {sentiment === 'neutral' && <Meh size={8} />}
                   {sentiment}
                 </div>
               )}
+            </div>
+            <div className="flex items-center gap-2">
               {tweet.content && tweet.content.length > 200 && (
                 <button 
                   onClick={handleSummarize}
@@ -274,6 +274,27 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
 
           {tweet.media && <MediaRenderer media={tweet.media} />}
 
+          {/* Reaction Summary Bar */}
+          {tweet.reactions && Object.values(tweet.reactions).some(v => v > 0) && (
+            <div className="flex flex-wrap gap-2 mt-3 items-center">
+              {(Object.keys(REACTION_CONFIG) as ReactionType[]).map(type => {
+                const count = tweet.reactions?.[type] || 0;
+                if (count === 0) return null;
+                return (
+                  <motion.div 
+                    key={type}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/5 bg-white/2 text-[10px] font-bold ${userReaction === type ? 'text-jtweet-cyan border-jtweet-cyan/20 bg-jtweet-cyan/5' : 'text-white/40'}`}
+                  >
+                    {REACTION_CONFIG[type].icon}
+                    <span>{count}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+
           {isRetweet && tweet.originalTweet && (
             <div className="mt-3 p-4 glass rounded-2xl border-white/10 hover:bg-white/5 transition-all">
                <div className="flex items-center gap-2 mb-2">
@@ -287,7 +308,16 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
           )}
           
           <div className="mt-4 flex items-center justify-between text-white/20 max-w-sm relative">
-             <InteractionBtn icon={<MessageCircle size={18} />} count={tweet.repliesCount} color="cyan" onClick={() => setShowComments(!showComments)} />
+             <InteractionBtn 
+               icon={<MessageCircle size={18} />} 
+               count={tweet.repliesCount} 
+               color="cyan" 
+               onClick={(e) => {
+                 e.stopPropagation();
+                 if (!showComments) loadComments();
+                 setShowComments(!showComments);
+               }} 
+             />
              <InteractionBtn 
                icon={<Repeat2 size={18} />} 
                count={tweet.retweetsCount} 

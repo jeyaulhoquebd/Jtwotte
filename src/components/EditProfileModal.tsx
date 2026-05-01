@@ -76,10 +76,10 @@ export default function EditProfileModal({ user, isOpen, onClose }: EditProfileM
                </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto custom-scrollbar p-6 space-y-8">
+            <div className="max-h-[80vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 md:space-y-8">
               {/* Cover Upload */}
               <div className="relative group">
-                 <div className="h-40 glass rounded-3xl overflow-hidden relative">
+                 <div className="h-32 md:h-40 glass rounded-3xl overflow-hidden relative">
                     {formData.cover ? (
                       <img src={formData.cover} className="w-full h-full object-cover" alt="Cover" />
                     ) : (
@@ -137,7 +137,7 @@ export default function EditProfileModal({ user, isOpen, onClose }: EditProfileM
                     />
                  </div>
 
-                 <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                        <label className="text-[10px] font-bold text-jtweet-cyan uppercase tracking-widest ml-4">Sector Location</label>
                        <input 
