@@ -33,7 +33,7 @@ export default function AdminDashboard() {
   const [broadcastText, setBroadcastText] = useState('');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'founder') {
     return <div className="p-8 text-center text-red-400 font-bold">Unauthorized Access: Neural Block Active</div>;
   }
 

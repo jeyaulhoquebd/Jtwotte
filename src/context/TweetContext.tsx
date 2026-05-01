@@ -82,6 +82,8 @@ export interface Tweet {
   media?: {
     youtubeId?: string;
     facebookVideoId?: string;
+    tiktokId?: string;
+    instagramId?: string;
     images?: string[];
     originalUrl?: string;
   };
@@ -239,6 +241,14 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     if (parsed.facebookVideoId) {
       media.facebookVideoId = parsed.facebookVideoId;
       media.originalUrl = `https://www.facebook.com/watch/?v=${parsed.facebookVideoId}`;
+    }
+    if (parsed.tiktokId) {
+      media.tiktokId = parsed.tiktokId;
+      media.originalUrl = `https://www.tiktok.com/embed/v2/${parsed.tiktokId}`;
+    }
+    if (parsed.instagramId) {
+      media.instagramId = parsed.instagramId;
+      media.originalUrl = `https://www.instagram.com/p/${parsed.instagramId}/`;
     }
     if (parsed.imageUrls) {
       media.images = [...(media.images || []), ...parsed.imageUrls];
