@@ -18,7 +18,8 @@ import {
   Grid,
   Heart,
   MessageSquare,
-  Repeat2
+  Repeat2,
+  Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import TweetCard from '../components/TweetCard';
@@ -102,7 +103,13 @@ export default function ProfilePage() {
         <div>
            <h2 className="text-xl font-display font-bold flex items-center gap-2">
              {profileUser.name}
-             {profileUser.role === 'admin' && <ShieldCheck size={18} className="text-jtweet-cyan shadow-cyan" />}
+             {profileUser.role === 'founder' && (
+                <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400/20 to-amber-600/20 px-2 py-0.5 rounded-full border border-yellow-400/30">
+                  <Crown size={14} className="text-yellow-400" />
+                  <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Founder</span>
+                </div>
+              )}
+              {profileUser.role === 'admin' && profileUser.role !== 'founder' && <ShieldCheck size={18} className="text-jtweet-cyan shadow-cyan" />}
            </h2>
            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{userTweets.length} Signal Nodes</p>
         </div>
@@ -123,7 +130,12 @@ export default function ProfilePage() {
          <div className="absolute -bottom-16 left-8 p-1.5 bg-jtweet-black rounded-[32px] border-4 border-jtweet-black z-10 shadow-2xl overflow-hidden">
             <div className="w-32 h-32 rounded-[28px] overflow-hidden relative group/avatar">
               <img src={profileUser.avatar} className="w-full h-full object-cover transition-transform group-hover/avatar:scale-110" alt="Avatar" referrerPolicy="no-referrer" />
-              {profileUser.role === 'admin' && (
+              {profileUser.role === 'founder' && (
+                <div className="absolute bottom-2 right-2 bg-gradient-to-br from-yellow-400 to-amber-600 p-1.5 rounded-xl border border-white/20 shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                  <Crown size={20} className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+                </div>
+              )}
+              {profileUser.role === 'admin' && profileUser.role !== 'founder' && (
                 <div className="absolute bottom-2 right-2 bg-jtweet-black/80 backdrop-blur-md p-1.5 rounded-xl border border-jtweet-cyan/30">
                   <ShieldCheck size={16} className="text-jtweet-cyan drop-shadow-[0_0_8px_rgba(0,255,242,0.5)]" />
                 </div>

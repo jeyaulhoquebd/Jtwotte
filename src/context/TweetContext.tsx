@@ -18,6 +18,7 @@ import {
 import { db, auth } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
+import { parseMediaLinks } from '../lib/mediaParser';
 
 enum OperationType {
   CREATE = 'create',
@@ -225,30 +226,20 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   const postTweet = async (content: string, pMedia?: { url: string, type: string }) => {
     if (!user) return;
 
-    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const imageRegex = /(https?:\/\/[\w\-\.]+(?:\/|[\w\-\.\/]+)\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[\w\-\.\&\=]+)?)/gi;
-
+    const parsed = parseMediaLinks(content);
+    
     let media: any = pMedia ? { images: [pMedia.url], type: pMedia.type } : {};
-    let cleanContent = content;
-
-    const ytMatch = cleanContent.match(youtubeRegex);
-    if (ytMatch) {
-      media.youtubeId = ytMatch[1];
-      cleanContent = cleanContent.replace(youtubeRegex, '').trim();
-    }
-
-    const imgMatches = cleanContent.match(imageRegex);
-    if (imgMatches) {
-      media.images = imgMatches;
-      imgMatches.forEach(url => {
-        cleanContent = cleanContent.replace(url, '').trim();
-      });
+    
+    if (parsed.youtubeId) media.youtubeId = parsed.youtubeId;
+    if (parsed.facebookVideoId) media.facebookVideoId = parsed.facebookVideoId;
+    if (parsed.imageUrls) {
+      media.images = [...(media.images || []), ...parsed.imageUrls];
     }
 
     try {
       await addDoc(collection(db, 'tweets'), {
         authorId: user.uid,
-        content: cleanContent,
+        content: parsed.cleanContent,
         timestamp: serverTimestamp(),
         type: 'tweet',
         likesCount: 0,

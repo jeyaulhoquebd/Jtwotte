@@ -1,7 +1,7 @@
 import React, { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send, Crown, BadgeCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useTweets, Tweet } from '../context/TweetContext';
@@ -24,7 +24,8 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
 
   const timestamp = tweet.timestamp?.toDate ? formatDistanceToNow(tweet.timestamp.toDate(), { addSuffix: true }) : 'just now';
   const isRetweet = tweet.type === 'retweet';
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'founder';
+  const isFounder = tweet.author?.role === 'founder';
   const isAuthor = user?.uid === tweet.authorId;
   const liked = isLiked(tweet.id);
 
@@ -64,7 +65,12 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
           <div className="w-14 h-14 rounded-2xl overflow-hidden glass border border-white/10 group-hover/avatar:border-jtweet-cyan/50 transition-all p-0.5">
             <img src={tweet.author?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[14px]" referrerPolicy="no-referrer" />
           </div>
-          {tweet.author?.role === 'admin' && (
+          {isFounder && (
+            <div className="absolute -top-2 -left-2 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg p-1 border border-white/20 shadow-[0_0_15px_rgba(251,191,36,0.5)] z-10 animate-bounce">
+              <Crown size={12} className="text-white" />
+            </div>
+          )}
+          {tweet.author?.role === 'admin' && !isFounder && (
             <div className="absolute -bottom-1.5 -right-1.5 bg-jtweet-black rounded-lg p-1 border border-jtweet-cyan/30 shadow-cyan">
               <ShieldCheck size={12} className="text-jtweet-cyan" />
             </div>
@@ -79,7 +85,14 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                 onClick={(e) => e.stopPropagation()}
               >
                 {tweet.author?.name}
-                {tweet.author?.role === 'admin' && <ShieldCheck size={14} className="text-jtweet-cyan shadow-cyan" />}
+                {isFounder && (
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400/20 to-amber-600/20 px-1.5 py-0.5 rounded-full border border-yellow-400/30">
+                    <Crown size={12} className="text-yellow-400" />
+                    <span className="text-[8px] font-bold text-yellow-400 uppercase tracking-tighter">Founder</span>
+                  </div>
+                )}
+                {tweet.author?.role === 'admin' && !isFounder && <ShieldCheck size={14} className="text-jtweet-cyan shadow-cyan" />}
+                {tweet.author?.role === 'user' && (tweet.likesCount || 0) > 100 && <BadgeCheck size={14} className="text-jtweet-cyan" />}
               </Link>
               <span className="text-white/30 font-mono text-xs">@{tweet.author?.handle?.replace('@', '') || 'neural_node'}</span>
               <span className="text-white/10">·</span>

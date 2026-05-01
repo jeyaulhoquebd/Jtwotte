@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: isOwner ? "Jeyaul Hoque" : (fbUser.displayName || 'Anonymous'),
             email: fbUser.email,
             avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
-            bio: isOwner ? "System Architect & Platform Owner" : '',
-            role: isOwner ? "admin" : "user",
+            bio: isOwner ? "Founder of JTweet Infinity | System Architect" : '',
+            role: isOwner ? "founder" : "user",
             createdAt: serverTimestamp()
           };
           await setDoc(userRef, newUser);
