@@ -13,7 +13,8 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'jeyaulhoque2025@gmail.com' ||
-        request.auth.token.email == 'jeyaulbooks@gmail.com'
+        request.auth.token.email == 'jeyaulbooks@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'founder']
       );
     }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -23,15 +24,11 @@ service cloud.firestore {
     // --- User Validation ---
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'name', 'email', 'avatar', 'createdAt'])
-        && data.keys().size() <= 12
+        && data.keys().size() <= 15
         && data.uid == request.auth.uid
         && data.name is string && data.name.size() > 0 && data.name.size() <= 64
         && data.email is string && data.email.size() <= 100
-        && data.avatar is string && data.avatar.size() <= 1000000 // Allow dataURL
-        && (data.get('cover', '') is string && data.get('cover', '').size() <= 1000000)
-        && (data.get('bio', '') is string && data.get('bio', '').size() <= 500)
-        && (data.get('location', '') is string && data.get('location', '').size() <= 100)
-        && (data.get('website', '') is string && data.get('website', '').size() <= 200)
+        && data.avatar is string && data.avatar.size() <= 1000000 
         && (data.get('role', 'user') in ['user', 'admin', 'founder'])
         && data.createdAt == request.time;
     }
@@ -46,8 +43,8 @@ service cloud.firestore {
       allow update: if (isOwner(userId) || isAdmin()) 
         && incoming().uid == existing().uid
         && (
-          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'role', 'cover', 'location', 'website']))
-          || (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'cover', 'location', 'website']))
+          isAdmin() || 
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'cover', 'location', 'website', 'handle']))
         );
     }
 
@@ -55,52 +52,53 @@ service cloud.firestore {
     function isValidTweet(data) {
       return data.keys().hasAll(['authorId', 'content', 'timestamp', 'type'])
         && data.authorId == request.auth.uid
-        && data.content is string && data.content.size() <= 5000
-        && data.timestamp == request.time
+        && data.content is string && data.content.size() <= 10000
+        && (data.timestamp == request.time || data.timestamp == existing().timestamp)
         && data.type in ['tweet', 'retweet', 'reply'];
+    }
+
+    match /tweets/{tweetId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidTweet(incoming());
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().authorId) && isValidTweet(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'media', 'type'])) ||
+        // Interaction updates (likes, retweets, replies, impressions)
+        incoming().diff(existing()).affectedKeys().hasAll(['likesCount']) ||
+        incoming().diff(existing()).affectedKeys().hasAll(['retweetsCount']) ||
+        incoming().diff(existing()).affectedKeys().hasAll(['repliesCount']) ||
+        incoming().diff(existing()).affectedKeys().hasAll(['impressions']) ||
+        incoming().diff(existing()).affectedKeys().hasAny(['reactions'])
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().authorId) || isAdmin());
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
+        allow update, delete: if isSignedIn() && (isOwner(existing().authorId) || isAdmin());
+      }
     }
 
     function isValidUserReaction(data) {
       return data.keys().hasAll(['userId', 'tweetId', 'type', 'createdAt'])
         && data.userId == request.auth.uid
-        && data.tweetId is string && data.tweetId.size() <= 128
+        && data.tweetId is string
         && data.type in ['like', 'love', 'insightful', 'fire', 'rocket']
-        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.get('updatedAt', null) != null));
+        && (data.createdAt == request.time || data.createdAt == existing().createdAt);
     }
 
     match /user_reactions/{reactionId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() 
-        && reactionId == request.auth.uid + '_' + incoming().tweetId
-        && isValidUserReaction(incoming())
-        && incoming().createdAt == request.time;
-      allow update: if isSignedIn()
-        && isOwner(existing().userId)
-        && isValidUserReaction(incoming())
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['type', 'updatedAt']);
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidUserReaction(incoming());
+      allow update: if isSignedIn() && (isOwner(existing().userId) || isAdmin()) && isValidUserReaction(incoming());
       allow delete: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
     }
 
-    match /tweets/{tweetId} {
+    match /followers/{followId} {
       allow read: if true;
-      allow create: if isSignedIn()
-        && isValidTweet(incoming());
-      allow update: if isSignedIn(); // Allow likes, counts, impressions from anyone, and edits from owner/admin
-      allow delete: if isSignedIn() && (isOwner(existing().authorId) || isAdmin());
-
-      match /likes/{userId} {
-        allow read: if true;
-        allow create, delete: if isOwner(userId);
-      }
-
-      match /comments/{commentId} {
-        allow read: if true;
-        allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
-        allow update, delete: if isOwner(existing().authorId) || isAdmin();
-      }
+      allow create: if isSignedIn() && incoming().followerId == request.auth.uid;
+      allow delete: if isSignedIn() && (incoming().followerId == request.auth.uid || isAdmin());
     }
 
     match /analytics/{date} {
@@ -108,29 +106,30 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /users/{userId}/notifications/{notiId} {
-      allow read: if isOwner(userId);
+    // Secure notifications collection
+    match /notifications/{notiId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn(); 
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || incoming().userId == request.auth.uid);
     }
 
     match /conversations/{convId} {
-      allow read: if isSignedIn() && (existing() == null || request.auth.uid in existing().participants);
-      allow create: if isSignedIn() && request.auth.uid in incoming().participants;
-      allow update: if isSignedIn() && request.auth.uid in existing().participants;
+      allow read: if isSignedIn() && (existing() == null || request.auth.uid in existing().participants || isAdmin());
+      allow create: if isSignedIn() && (request.auth.uid in incoming().participants || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid in existing().participants || isAdmin());
       
       match /messages/{msgId} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || isAdmin());
         allow create: if isSignedIn() && incoming().senderId == request.auth.uid;
-        allow update: if isSignedIn();
+        allow update: if isSignedIn() && (isOwner(existing().senderId) || isAdmin());
+        allow delete: if isSignedIn() && (isOwner(existing().senderId) || isAdmin());
       }
-    }
-
-    match /followers/{followId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow delete: if isSignedIn();
     }
   }
 }

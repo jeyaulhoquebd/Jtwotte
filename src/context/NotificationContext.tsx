@@ -61,7 +61,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setLoading(true);
 
     const q = query(
-      collection(db, 'users', user.uid, 'notifications'),
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
       orderBy('timestamp', 'desc'),
       limit(50)
     );
@@ -102,8 +103,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const sendNotification = async (targetUserId: string, data: any) => {
     if (targetUserId === user?.uid && data.type !== 'broadcast') return;
     
-    await addDoc(collection(db, 'users', targetUserId, 'notifications'), {
+    await addDoc(collection(db, 'notifications'), {
       ...data,
+      userId: targetUserId,
       timestamp: serverTimestamp(),
       read: false
     });
@@ -111,7 +113,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const markAsRead = async (id: string) => {
     if (!user) return;
-    await updateDoc(doc(db, 'users', user.uid, 'notifications', id), {
+    await updateDoc(doc(db, 'notifications', id), {
       read: true
     });
   };
@@ -120,14 +122,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (!user) return;
     const unread = notifications.filter(n => !n.read);
     const promises = unread.map(n => 
-      updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { read: true })
+      updateDoc(doc(db, 'notifications', n.id), { read: true })
     );
     await Promise.all(promises);
   };
 
   const deleteNotification = async (id: string) => {
     if (!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'notifications', id));
+    await deleteDoc(doc(db, 'notifications', id));
   };
 
   const broadcastMessage = async (content: string, type: any = 'broadcast') => {
