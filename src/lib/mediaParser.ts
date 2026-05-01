@@ -9,7 +9,7 @@ export interface ParsedMedia {
 }
 
 export function parseMediaLinks(content: string): ParsedMedia {
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/gi;
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/playlist\?list=)([a-zA-Z0-9_-]{11,})/gi;
   const facebookRegex = /(?:https?:\/\/)?(?:www\.)?(?:facebook\.com\/watch\/?\?v=|facebook\.com\/video\.php\?v=|facebook\.com\/\w+\/videos\/|facebook\.com\/share\/v\/|facebook\.com\/reels?\/)(\d+)/gi;
   const tiktokRegex = /(?:https?:\/\/)?(?:www\.)?(?:tiktok\.com\/@[\w\.]+\/video\/|vm\.tiktok\.com\/|tiktok\.com\/t\/|tiktok\.com\/embed\/v2\/|vt\.tiktok\.com\/)([\w]{2,})/gi;
   const instagramRegex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:p|reels|reel)\/([a-zA-Z0-9_-]+)/gi;

@@ -198,7 +198,7 @@ export default function HomeFeed() {
       </AnimatePresence>
 
       {/* Composer */}
-      <div className="p-4 md:p-6 border-b border-white/10 group/composer relative overflow-hidden hidden md:block">
+      <div className="p-4 md:p-6 border-b border-white/10 group/composer relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-jtweet-cyan/5 via-transparent to-transparent opacity-0 group-focus-within/composer:opacity-100 transition-opacity duration-1000 pointer-events-none" />
         <div className="flex gap-3 md:gap-4 relative">
           <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden glass border border-white/10 shrink-0 p-0.5 relative">

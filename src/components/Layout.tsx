@@ -103,7 +103,14 @@ export default function Layout() {
           <NavItem to="/settings" icon={<Settings size={24} />} label="Settings" />
         </nav>
         
-        <button className="mt-8 w-full glass hover:bg-jtweet-cyan/20 transition-all rounded-full py-4 font-bold text-lg cyan-border-glow flex items-center justify-center gap-2 group">
+        <button 
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const textarea = document.querySelector('textarea');
+            if (textarea) textarea.focus();
+          }}
+          className="mt-8 w-full glass hover:bg-jtweet-cyan/20 transition-all rounded-full py-4 font-bold text-lg cyan-border-glow flex items-center justify-center gap-2 group"
+        >
            <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
            Broadcast
         </button>
@@ -131,7 +138,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Areas */}
-      <main className="flex-1 w-full max-w-xl md:border-x border-white/10 min-h-screen pt-14 md:pt-0 mb-16 md:mb-0">
+      <main className="flex-1 w-full max-w-xl md:border-x border-white/10 min-h-screen pt-14 md:pt-0 mb-16 md:mb-0 overflow-x-hidden">
         <Outlet />
       </main>
 
@@ -160,7 +167,14 @@ export default function Layout() {
 
       {/* Floating Action Button (Mobile) */}
       <button 
-        onClick={() => navigate('/')} 
+        onClick={() => {
+          navigate('/');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(() => {
+            const textarea = document.querySelector('textarea');
+            if (textarea) textarea.focus();
+          }, 100);
+        }} 
         className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-jtweet-cyan text-jtweet-black rounded-full shadow-cyan flex items-center justify-center z-40 active:scale-90 transition-transform"
       >
         <Send size={24} />

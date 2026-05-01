@@ -30,15 +30,16 @@ function FormattedContent({ content }: { content: string }) {
     p: ({ children }: any) => {
       if (typeof children === 'string' || Array.isArray(children)) {
         const text = Array.isArray(children) ? children.join('') : children;
+        // Split by whitespace but keep the whitespace
         const words = String(text).split(/(\s+)/);
         return (
-          <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">
+          <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden">
             {words.map((word, i) => {
               if (word.startsWith('#')) {
                 return (
                   <span 
                     key={i} 
-                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold"
+                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold inline-block"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/?q=${encodeURIComponent(word)}`);
@@ -52,7 +53,7 @@ function FormattedContent({ content }: { content: string }) {
                 return (
                   <span 
                     key={i} 
-                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold"
+                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold inline-block"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/profile/${word.substring(1)}`);
@@ -62,12 +63,27 @@ function FormattedContent({ content }: { content: string }) {
                   </span>
                 );
               }
+              // Detect URLs and force break-all
+              if (word.match(/^https?:\/\//)) {
+                return (
+                  <a 
+                    key={i} 
+                    href={word}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-jtweet-cyan hover:underline break-all"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {word}
+                  </a>
+                );
+              }
               return word;
             })}
           </p>
         );
       }
-      return <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">{children}</p>;
+      return <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden">{children}</p>;
     }
   };
 

@@ -39,6 +39,14 @@ export default function SettingsPage() {
     setIsSaving(false);
   };
 
+  const [shieldActive, setShieldActive] = useState(true);
+  const [visibility, setVisibility] = useState('public');
+  const [alerts, setAlerts] = useState({
+    mentions: true,
+    flux: true,
+    nodes: false
+  });
+
   const modules = [
     { 
       id: 'shield', 
@@ -50,13 +58,24 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between p-3 border border-white/5 rounded-xl bg-white/5">
              <div className="flex flex-col">
                <span className="text-sm font-bold">Two-Factor Auth</span>
-               <span className="text-[10px] text-white/40">Biometric verification required</span>
+               <span className="text-[10px] text-white/40 uppercase font-bold">Biometric verification required</span>
              </div>
-             <div className="w-10 h-5 bg-jtweet-cyan/20 rounded-full relative cursor-pointer">
-               <div className="absolute right-1 top-1 w-3 h-3 bg-jtweet-cyan rounded-full shadow-cyan shadow-sm" />
-             </div>
+             <button 
+               onClick={() => setShieldActive(!shieldActive)}
+               className={`w-10 h-5 rounded-full relative transition-colors ${shieldActive ? 'bg-jtweet-cyan/40' : 'bg-white/10'}`}
+             >
+               <motion.div 
+                 animate={{ x: shieldActive ? 22 : 2 }}
+                 className={`absolute top-1 w-3 h-3 rounded-full shadow-sm ${shieldActive ? 'bg-jtweet-cyan shadow-cyan' : 'bg-white/40'}`} 
+               />
+             </button>
           </div>
-          <button className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/10">Cycle Access Keys</button>
+          <button 
+            onClick={() => alert("SIGNAL LOG: Regenerating neural access keys... Cluster re-indexing initiated.")}
+            className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/10 transition-all active:scale-95"
+          >
+            Cycle Access Keys
+          </button>
         </div>
       )
     },
@@ -67,9 +86,27 @@ export default function SettingsPage() {
       description: 'Who can track your signal',
       content: (
         <div className="space-y-2 p-4">
-          <VisibilityOption icon={<UserCheck size={14}/>} label="Public Trace" description="Visible to all neural nodes" active />
-          <VisibilityOption icon={<Activity size={14}/>} label="Linked Nodes" description="Only following nodes can track" />
-          <VisibilityOption icon={<UserX size={14}/>} label="Shadow Mode" description="Full signal stealth" />
+          <VisibilityOption 
+            icon={<UserCheck size={14}/>} 
+            label="Public Trace" 
+            description="Visible to all neural nodes" 
+            active={visibility === 'public'} 
+            onClick={() => setVisibility('public')}
+          />
+          <VisibilityOption 
+            icon={<Activity size={14}/>} 
+            label="Linked Nodes" 
+            description="Only following nodes can track" 
+            active={visibility === 'linked'} 
+            onClick={() => setVisibility('linked')}
+          />
+          <VisibilityOption 
+            icon={<UserX size={14}/>} 
+            label="Shadow Mode" 
+            description="Full signal stealth" 
+            active={visibility === 'shadow'} 
+            onClick={() => setVisibility('shadow')}
+          />
         </div>
       )
     },
@@ -80,9 +117,9 @@ export default function SettingsPage() {
       description: 'Cyber, Dark, or Plasma themes',
       content: (
         <div className="grid grid-cols-3 gap-2 p-4">
-          <ThemeOption active={theme === 'cyber'} id="cyber" label="Cyber" icon={<Zap size={14} className="text-jtweet-cyan"/>} onClick={() => setTheme('cyber')} />
-          <ThemeOption active={theme === 'dark'} id="dark" label="Dark" icon={<Moon size={14}/>} onClick={() => setTheme('dark')} />
-          <ThemeOption active={theme === 'plasma'} id="plasma" label="Plasma" icon={<Activity size={14} className="text-[#ff00ff]"/>} onClick={() => setTheme('plasma')} />
+          <ThemeOption active={theme === 'cyber'} id="cyber" label="Cyber" icon={<Zap size={14} className="text-jtweet-cyan shadow-cyan"/>} onClick={() => setTheme('cyber')} />
+          <ThemeOption active={theme === 'dark'} id="dark" label="Dark" icon={<Moon size={14} className="text-white"/>} onClick={() => setTheme('dark')} />
+          <ThemeOption active={theme === 'plasma'} id="plasma" label="Plasma" icon={<Activity size={14} className="text-[#ff00ff] shadow-[0_0_10px_#ff00ff]"/>} onClick={() => setTheme('plasma')} />
         </div>
       )
     },
@@ -93,12 +130,22 @@ export default function SettingsPage() {
       description: 'Configure incoming signal logs',
       content: (
         <div className="space-y-3 p-4">
-           {['Neural Mentions', 'Signal High Flux', 'New Node Connections'].map(l => (
-             <div key={l} className="flex items-center justify-between">
-                <span className="text-[11px] font-bold opacity-60 uppercase">{l}</span>
-                <div className="w-8 h-4 bg-white/10 rounded-full relative">
-                   <div className="absolute left-1 top-1 w-2 h-2 bg-white/40 rounded-full" />
-                </div>
+           {[
+             { id: 'mentions', label: 'Neural Mentions' },
+             { id: 'flux', label: 'Signal High Flux' },
+             { id: 'nodes', label: 'New Node Connections' }
+           ].map(opt => (
+             <div key={opt.id} className="flex items-center justify-between">
+                <span className="text-[11px] font-bold opacity-60 uppercase">{opt.label}</span>
+                <button 
+                  onClick={() => setAlerts(prev => ({ ...prev, [opt.id]: !prev[opt.id as keyof typeof alerts] }))}
+                  className={`w-8 h-4 rounded-full relative transition-colors ${alerts[opt.id as keyof typeof alerts] ? 'bg-jtweet-cyan/20' : 'bg-white/10'}`}
+                >
+                   <motion.div 
+                     animate={{ x: alerts[opt.id as keyof typeof alerts] ? 18 : 2 }}
+                     className={`absolute top-1 w-2 h-2 rounded-full ${alerts[opt.id as keyof typeof alerts] ? 'bg-jtweet-cyan shadow-cyan' : 'bg-white/40'}`} 
+                   />
+                </button>
              </div>
            ))}
         </div>
@@ -112,10 +159,18 @@ export default function SettingsPage() {
       content: (
         <div className="p-4 space-y-4">
            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 font-mono text-[10px] uppercase">
-              <Languages size={14} />
-              <span>Current Node: EN-US / Pacific</span>
+              <Languages size={14} className="text-blue-400" />
+              <div className="flex flex-col">
+                <span className="text-white/40">Current Node</span>
+                <span className="text-white">EN-US / Pacific Alpha</span>
+              </div>
            </div>
-           <button className="w-full py-2 text-[10px] font-bold border border-white/5 rounded-xl opacity-40 hover:opacity-100 transition-opacity">Select Different Mesh</button>
+           <button 
+             onClick={() => alert("ACCESS DENIED: Regional master nodes are currently locked in your quadrant.")}
+             className="w-full py-2 text-[10px] font-bold border border-white/5 rounded-xl opacity-40 hover:opacity-100 transition-opacity uppercase tracking-widest"
+           >
+             Select Different Mesh
+           </button>
         </div>
       )
     },
@@ -225,9 +280,12 @@ export default function SettingsPage() {
   );
 }
 
-function VisibilityOption({ icon, label, description, active = false }: { icon: React.ReactNode, label: string, description: string, active?: boolean }) {
+function VisibilityOption({ icon, label, description, active = false, onClick }: { icon: React.ReactNode, label: string, description: string, active?: boolean, onClick?: () => void }) {
   return (
-    <div className={`p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${active ? 'bg-jtweet-cyan/5 border-jtweet-cyan/20' : 'bg-transparent border-white/5 hover:border-white/10 opacity-40 hover:opacity-100'}`}>
+    <div 
+      onClick={onClick}
+      className={`p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${active ? 'bg-jtweet-cyan/5 border-jtweet-cyan/20' : 'bg-transparent border-white/5 hover:border-white/10 opacity-40 hover:opacity-100'}`}
+    >
        <div className="flex items-center gap-3">
           <div className={`${active ? 'text-jtweet-cyan' : 'text-white/20'}`}>
              {icon}

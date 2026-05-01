@@ -198,63 +198,73 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
 
     const q = query(collection(db, 'tweets'), orderBy('timestamp', 'desc'));
     const globalAuthorCache: Record<string, any> = {};
+    let latestSnapshotId = 0;
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      try {
-        const docs = snapshot.docs;
-        const promises = docs.map(async (d) => {
-          const data = d.data();
-          const authorId = data.authorId;
-          
-          let authorData = globalAuthorCache[authorId];
-          if (!authorData) {
-            try {
-              const userSnap = await getDoc(doc(db, 'users', authorId));
-              authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
-              const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
-              authorData.handle = `@${baseHandle}`;
-              globalAuthorCache[authorId] = authorData;
-            } catch (e) {
-              authorData = { name: 'Unknown', avatar: '', handle: '@unknown' };
-            }
-          }
-
-          let originalTweet = null;
-          if (data.type === 'retweet' && data.originalTweetId) {
-            try {
-              const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
-              if (origSnap.exists()) {
-                 const origData = origSnap.data();
-                 const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
-                 const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
-                 const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
-                 originalTweet = {
-                   id: origSnap.id,
-                   ...origData,
-                   author: {
-                     name: origAuthorData.name,
-                     avatar: origAuthorData.avatar,
-                     handle: `@${origBaseHandle}`
-                   }
-                 };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const snapshotId = ++latestSnapshotId;
+      
+      const processSnapshot = async () => {
+        try {
+          const docs = snapshot.docs;
+          const promises = docs.map(async (d) => {
+            const data = d.data();
+            const authorId = data.authorId;
+            
+            let authorData = globalAuthorCache[authorId];
+            if (!authorData) {
+              try {
+                const userSnap = await getDoc(doc(db, 'users', authorId));
+                authorData = userSnap.exists() ? userSnap.data() : { name: 'Unknown', avatar: '', handle: '@unknown' };
+                const baseHandle = authorData.name.toLowerCase().replace(/\s/g, '');
+                authorData.handle = `@${baseHandle}`;
+                globalAuthorCache[authorId] = authorData;
+              } catch (e) {
+                authorData = { name: 'Unknown', avatar: '', handle: '@unknown' };
               }
-            } catch (e) {}
+            }
+
+            let originalTweet = null;
+            if (data.type === 'retweet' && data.originalTweetId) {
+              try {
+                const origSnap = await getDoc(doc(db, 'tweets', data.originalTweetId));
+                if (origSnap.exists()) {
+                   const origData = origSnap.data();
+                   const origAuthorSnap = await getDoc(doc(db, 'users', origData.authorId));
+                   const origAuthorData = origAuthorSnap.exists() ? origAuthorSnap.data() : { name: 'Unknown', avatar: '' };
+                   const origBaseHandle = origAuthorData.name.toLowerCase().replace(/\s/g, '');
+                   originalTweet = {
+                     id: origSnap.id,
+                     ...origData,
+                     author: {
+                       name: origAuthorData.name,
+                       avatar: origAuthorData.avatar,
+                       handle: `@${origBaseHandle}`
+                     }
+                   };
+                }
+              } catch (e) {}
+            }
+
+            return {
+              id: d.id,
+              ...data,
+              author: authorData,
+              originalTweet
+            } as Tweet;
+          });
+
+          const results = await Promise.all(promises);
+          
+          if (snapshotId === latestSnapshotId) {
+            setTweets(results);
+            setLoading(false);
           }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'tweets');
+        }
+      };
 
-          return {
-            id: d.id,
-            ...data,
-            author: authorData,
-            originalTweet
-          } as Tweet;
-        });
-
-        const results = await Promise.all(promises);
-        setTweets(results);
-        setLoading(false);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'tweets');
-      }
+      processSnapshot();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'tweets');
     });
@@ -309,7 +319,10 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     try {
       const tweetDoc = await getDoc(doc(db, 'tweets', tweetId));
-      if (!tweetDoc.exists()) return;
+      if (!tweetDoc.exists()) {
+        console.warn(`Tweet ${tweetId} not found for deletion.`);
+        return;
+      }
       
       const tweetData = tweetDoc.data();
       const isAdminEmail = user?.email === 'jeyaulhoque2025@gmail.com' || user?.email === 'jeyaulbooks@gmail.com';
@@ -321,8 +334,19 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Optimistic update
+      setTweets(prev => prev.filter(t => t.id !== tweetId));
+
       await deleteDoc(doc(db, 'tweets', tweetId));
+      
+      // Cleanup associated data
+      const reactionsQuery = query(collection(db, 'user_reactions'), where('tweetId', '==', tweetId));
+      getDocs(reactionsQuery).then(snap => {
+        snap.forEach(d => deleteDoc(doc(db, 'user_reactions', d.id)).catch(() => {}));
+      });
+
     } catch (error) {
+      console.error('Delete failed:', error);
       handleFirestoreError(error, OperationType.DELETE, `tweets/${tweetId}`);
     }
   };
