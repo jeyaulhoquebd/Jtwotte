@@ -9,9 +9,9 @@ export default function Logo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       <div className="relative w-10 h-10">
         {/* Abstract Emblem */}
         <motion.div
-           initial={{ opacity: 0, shadow: "0 0 0px rgba(0,242,255,0)" }}
-           animate={{ opacity: 1, shadow: "0 0 20px rgba(0,242,255,0.4)" }}
-           className="absolute inset-0"
+           initial={{ opacity: 0 }}
+           animate={{ opacity: 1 }}
+           className="absolute inset-0 shadow-[0_0_20px_rgba(0,242,255,0.4)]"
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
              <defs>

@@ -31,26 +31,45 @@ const EmbedCard = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!isLoaded || !containerRef.current) return;
+    if (!isLoaded || isIframeLoaded) return;
+
+    // Watchdog timer: If iframe doesn't call onLoad within 8 seconds, assume restriction
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!isIframeLoaded) {
+        setHasError(true);
+      }
+    }, 8000);
+
+    return () => {
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    };
+  }, [isLoaded, isIframeLoaded]);
+
+  useEffect(() => {
+    if (!isIframeLoaded || !containerRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (iframeRef.current && iframeRef.current.contentWindow) {
-            if (entry.isIntersecting) {
-              // Resume if YouTube
-              if (type === 'youtube') {
-                iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+            try {
+              if (entry.isIntersecting) {
+                if (type === 'youtube') {
+                  iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                }
+              } else {
+                if (type === 'youtube') {
+                  iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo' }), '*');
+                }
               }
-            } else {
-              // Pause if YouTube
-              if (type === 'youtube') {
-                iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo' }), '*');
-              }
+            } catch (e) {
+              // Silently catch cross-origin policy errors
             }
           }
         });
@@ -60,17 +79,22 @@ const EmbedCard = ({
 
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [isLoaded, type]);
+  }, [isIframeLoaded, type]);
+
+  const handleIframeLoad = () => {
+    setIsIframeLoaded(true);
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+  };
 
   if (hasError) {
     return (
-      <div className="relative aspect-video rounded-2xl overflow-hidden bg-jtweet-black/60 border border-white/5 flex flex-col items-center justify-center p-6 text-center space-y-4 backdrop-blur-xl">
-        <div className="p-3 rounded-full bg-white/5 border border-white/10 shadow-inner">
-          <AlertCircle size={32} className="text-white/20" />
+      <div className="relative aspect-video rounded-2xl overflow-hidden bg-jtweet-black/60 border border-red-500/20 flex flex-col items-center justify-center p-6 text-center space-y-4 backdrop-blur-xl">
+        <div className="p-3 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+          <AlertCircle size={32} className="text-red-400" />
         </div>
         <div className="space-y-1">
-          <p className="text-white font-display font-medium text-sm">Video unavailable for embed</p>
-          <p className="text-white/40 text-[10px] uppercase tracking-widest leading-relaxed">This node may be restricted by source security protocols</p>
+          <p className="text-white font-display font-medium text-sm md:text-base">Stream restricted on {label}</p>
+          <p className="text-white/40 text-[9px] md:text-[10px] uppercase tracking-widest leading-relaxed px-4">Sources may block external embedding based on regional protocols or privacy settings. This node may have been redacted or restricted by the platform host.</p>
         </div>
         <motion.a
           href={originalUrl || '#'}
@@ -78,73 +102,62 @@ const EmbedCard = ({
           rel="noopener noreferrer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="px-6 py-2.5 bg-gradient-to-r from-jtweet-cyan to-blue-500 text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(34,211,238,0.3)] flex items-center gap-2"
+          className="px-6 py-3 bg-white text-black text-[11px] font-bold uppercase tracking-widest rounded-full flex items-center gap-2 shadow-xl hover:bg-jtweet-cyan transition-colors"
         >
-          <span className="flex items-center gap-2 transition-transform group-hover:translate-x-1">
-            <Share2 size={12} /> Watch on {label}
-          </span>
+          <Share2 size={12} /> View on {label}
         </motion.a>
       </div>
     );
   }
 
+  const isVertical = type === 'tiktok' || type === 'instagram';
+
   return (
     <div 
       ref={containerRef}
-      className={`relative ${type === 'tiktok' || type === 'instagram' ? 'aspect-[9/16] max-h-[600px] w-full max-w-[340px] mx-auto' : 'aspect-video'} rounded-2xl overflow-hidden glass border border-white/10 group shadow-2xl transition-all hover:shadow-[0_0_30px_rgba(34,211,238,0.2)] hover:border-jtweet-cyan/30`}
+      className={`relative ${isVertical ? 'aspect-[9/16] max-h-[500px] md:max-h-[600px] w-full max-w-[300px] md:max-w-[340px] mx-auto' : 'aspect-video'} rounded-2xl overflow-hidden glass border border-white/10 group shadow-2xl transition-all hover:border-jtweet-cyan/30`}
     >
-      <div className={`absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full ${color} text-[10px] font-bold text-white flex items-center gap-1.5 shadow-xl backdrop-blur-md border border-white/10`}>
-        <Play size={10} fill="currentColor" /> {label}
-      </div>
-
       {!isLoaded ? (
         <div 
-          className="w-full h-full cursor-pointer relative flex items-center justify-center bg-gradient-to-br from-jtweet-black to-gray-900 group"
+          className="w-full h-full cursor-pointer relative flex items-center justify-center bg-jtweet-black group"
           onClick={() => setIsLoaded(true)}
         >
           {type === 'youtube' && (
             <img 
-              src={`https://img.youtube.com/vi/${id}/maxresdefault.jpg`} 
+              src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} 
               alt="Thumbnail" 
-              className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" 
+              className="w-full h-full object-cover opacity-50 group-hover:scale-105 group-hover:opacity-60 transition-all duration-700" 
+              loading="lazy"
             />
           )}
-          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
+          <div className="absolute inset-0 bg-gradient-to-t from-jtweet-black via-transparent to-black/20" />
           <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="z-10 w-16 h-16 rounded-full bg-jtweet-cyan/20 backdrop-blur-xl border border-jtweet-cyan/40 flex items-center justify-center text-jtweet-cyan shadow-[0_0_30px_rgba(34,211,238,0.4)] group-hover:scale-110 group-hover:bg-jtweet-cyan group-hover:text-black transition-all"
+            className="z-10 w-14 h-14 md:w-16 md:h-16 rounded-full bg-jtweet-cyan/10 backdrop-blur-3xl border border-jtweet-cyan/30 flex items-center justify-center text-jtweet-cyan group-hover:scale-110 group-hover:bg-jtweet-cyan group-hover:text-black transition-all shadow-[0_0_40px_rgba(34,211,238,0.2)]"
           >
-            <Play size={28} fill="currentColor" />
+            <Play size={24} fill="currentColor" className="md:w-7 md:h-7" />
           </motion.div>
-          <div className="absolute bottom-4 left-4 right-4 text-center">
-            <p className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] group-hover:text-jtweet-cyan transition-colors">Click to Load Stream</p>
-          </div>
         </div>
       ) : (
-        <iframe
-          ref={iframeRef}
-          src={getEmbedUrl(id, true)}
-          title={`${label} video player`}
-          className="w-full h-full"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          onError={() => setHasError(true)}
-        />
+        <div className="w-full h-full relative">
+          {!isIframeLoaded && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-jtweet-black/40 backdrop-blur-md z-10">
+              <div className="w-4 h-4 border-2 border-jtweet-cyan/20 border-t-jtweet-cyan rounded-full animate-spin" />
+            </div>
+          )}
+          <iframe
+            ref={iframeRef}
+            src={getEmbedUrl(id, true)}
+            title={`${label} video player`}
+            className="w-full h-full"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            onLoad={handleIframeLoad}
+          />
+        </div>
       )}
-
-      <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-all transform translate-y-0 z-20">
-        <motion.a 
-          href={originalUrl || '#'} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          whileHover={{ scale: 1.05 }}
-          className="px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold flex items-center gap-2 hover:bg-jtweet-cyan hover:text-black transition-all"
-        >
-          <Share2 size={12} /> Watch on {label}
-        </motion.a>
-      </div>
     </div>
   );
 };

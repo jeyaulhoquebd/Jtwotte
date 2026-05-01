@@ -107,6 +107,19 @@
         "followedId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "UserReaction": {
+      "title": "UserReaction",
+      "description": "A user's specific reaction to a signal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tweetId": { "type": "string" },
+        "type": { "type": "string", "enum": ["like", "love", "insightful", "fire", "rocket"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "tweetId", "type", "createdAt"]
     }
   },
   "firestore": {
@@ -145,6 +158,10 @@
     "/analytics/{date}": {
       "schema": "Analytics",
       "description": "System metrics"
+    },
+    "/user_reactions/{reactionId}": {
+      "schema": "UserReaction",
+      "description": "User specific reactions recorded for cross-reference"
     }
   }
 }

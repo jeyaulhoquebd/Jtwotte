@@ -1,37 +1,53 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Repeat2, BadgeCheck, Image as ImageIcon, X } from 'lucide-react';
+import { Sparkles, Repeat2, BadgeCheck, Image as ImageIcon, X, Search, Hash } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTweets } from '../context/TweetContext';
 import { suggestTweet } from '../services/geminiService';
 import TweetCard from '../components/TweetCard';
 import { TweetSkeleton } from '../components/Skeleton';
 
-type FeedType = 'for-you' | 'following' | 'trending';
+type FeedType = 'for-you' | 'following' | 'trending' | 'search';
 
 export default function HomeFeed() {
   const { user } = useAuth();
   const { tweets, postTweet, loading, toggleLike, retweet, deleteTweet } = useTweets();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q');
+  
   const [newTweet, setNewTweet] = useState('');
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [retweetModal, setRetweetModal] = useState<{ id: string, name: string } | null>(null);
   const [retweetCaption, setRetweetCaption] = useState('');
-  const [activeFeed, setActiveFeed] = useState<FeedType>('for-you');
+  const [activeFeed, setActiveFeed] = useState<FeedType>(queryParam ? 'search' : 'for-you');
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (queryParam) {
+      setActiveFeed('search');
+    }
+  }, [queryParam]);
 
   const filteredTweets = useMemo(() => {
     let base = [...tweets];
     
+    if (activeFeed === 'search' && queryParam) {
+      const q = queryParam.toLowerCase();
+      return base.filter(t => 
+        t.content.toLowerCase().includes(q) || 
+        t.author?.name.toLowerCase().includes(q) ||
+        t.author?.handle.toLowerCase().includes(q)
+      );
+    }
+
     if (activeFeed === 'trending') {
       return base.sort((a, b) => (b.likesCount + b.retweetsCount) - (a.likesCount + a.retweetsCount));
     }
     
     if (activeFeed === 'for-you') {
-      // Enhanced sorting algorithm: 
-      // score = (likes * 0.4) + (retweets * 0.3) + (replies * 0.2) + (impressions * 0.1)
-      // also factor in time decay
       return base.sort((a, b) => {
         const scoreA = (a.likesCount * 0.4) + (a.retweetsCount * 0.3) + (a.repliesCount * 0.2) + (a.impressions * 0.1);
         const scoreB = (b.likesCount * 0.4) + (b.retweetsCount * 0.3) + (b.repliesCount * 0.2) + (b.impressions * 0.1);
@@ -39,8 +55,7 @@ export default function HomeFeed() {
         const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : Date.now();
         const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : Date.now();
         
-        // Weight relative to current time (simple linear decay)
-        const ageFactorA = Math.max(0, 1 - (Date.now() - timeA) / (1000 * 60 * 60 * 24)); // 24h decay
+        const ageFactorA = Math.max(0, 1 - (Date.now() - timeA) / (1000 * 60 * 60 * 24));
         const ageFactorB = Math.max(0, 1 - (Date.now() - timeB) / (1000 * 60 * 60 * 24));
         
         return (scoreB * (0.5 + ageFactorB)) - (scoreA * (0.5 + ageFactorA));
@@ -48,7 +63,7 @@ export default function HomeFeed() {
     }
     
     return base;
-  }, [tweets, activeFeed]);
+  }, [tweets, activeFeed, queryParam]);
 
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,11 +121,38 @@ export default function HomeFeed() {
           </div>
         </div>
         <div className="flex px-4 divide-x divide-white/5 border-t border-white/5 overflow-x-auto custom-scrollbar">
-           <FeedTab active={activeFeed === 'for-you'} label="Neural Sync" onClick={() => setActiveFeed('for-you')} />
-           <FeedTab active={activeFeed === 'following'} label="Linked Nodes" onClick={() => setActiveFeed('following')} />
-           <FeedTab active={activeFeed === 'trending'} label="High Flux" onClick={() => setActiveFeed('trending')} />
+           <FeedTab active={activeFeed === 'for-you'} label="Neural Sync" onClick={() => { setActiveFeed('for-you'); setSearchParams({}); }} />
+           <FeedTab active={activeFeed === 'following'} label="Linked Nodes" onClick={() => { setActiveFeed('following'); setSearchParams({}); }} />
+           <FeedTab active={activeFeed === 'trending'} label="High Flux" onClick={() => { setActiveFeed('trending'); setSearchParams({}); }} />
+           {queryParam && <FeedTab active={activeFeed === 'search'} label="Result Trace" onClick={() => setActiveFeed('search')} />}
         </div>
       </header>
+
+      <AnimatePresence>
+        {queryParam && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="p-4 bg-jtweet-cyan/5 border-b border-white/5 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <Search size={14} className="text-jtweet-cyan" />
+              <span className="text-xs font-bold text-white/60">Tracing signal: </span>
+              <span className="text-xs font-mono font-bold text-jtweet-cyan glass px-2 py-0.5 rounded-full">{queryParam}</span>
+            </div>
+            <button 
+              onClick={() => {
+                setSearchParams({});
+                setActiveFeed('for-you');
+              }}
+              className="text-[10px] font-bold text-white/20 hover:text-white uppercase tracking-widest flex items-center gap-1"
+            >
+              Clear Probe <X size={12} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Retweet Modal */}
       <AnimatePresence>
@@ -156,15 +198,15 @@ export default function HomeFeed() {
       </AnimatePresence>
 
       {/* Composer */}
-      <div className="p-6 border-b border-white/10 group/composer relative overflow-hidden">
+      <div className="p-4 md:p-6 border-b border-white/10 group/composer relative overflow-hidden hidden md:block">
         <div className="absolute inset-0 bg-gradient-to-br from-jtweet-cyan/5 via-transparent to-transparent opacity-0 group-focus-within/composer:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-        <div className="flex gap-4 relative">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden glass border border-white/10 shrink-0 p-0.5 relative">
+        <div className="flex gap-3 md:gap-4 relative">
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden glass border border-white/10 shrink-0 p-0.5 relative">
             <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[14px]" referrerPolicy="no-referrer" />
           </div>
           <div className="flex-1">
             <textarea 
-              className="w-full bg-transparent border-none focus:ring-0 text-xl placeholder-white/10 resize-none min-h-[100px] transition-all"
+              className="w-full bg-transparent border-none focus:ring-0 text-lg md:text-xl placeholder-white/10 resize-none min-h-[80px] md:min-h-[100px] transition-all"
               placeholder="What signals are you transmitting?"
               value={newTweet}
               onChange={(e) => setNewTweet(e.target.value)}

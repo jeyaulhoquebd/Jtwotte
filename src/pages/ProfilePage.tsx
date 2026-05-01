@@ -117,7 +117,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Banner */}
-      <div className="h-64 bg-jtweet-black relative overflow-hidden group">
+      <div className="h-40 md:h-64 bg-jtweet-black relative overflow-hidden group">
          {profileUser.cover ? (
            <img src={profileUser.cover} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000" alt="Cover" referrerPolicy="no-referrer" />
          ) : (
@@ -128,17 +128,17 @@ export default function ProfilePage() {
          <div className="absolute inset-0 bg-gradient-to-t from-jtweet-black to-transparent" />
          
          {/* Profile Pic Placement */}
-         <div className="absolute -bottom-16 left-8 p-1.5 bg-jtweet-black rounded-[32px] border-4 border-jtweet-black z-10 shadow-2xl overflow-hidden">
-            <div className="w-32 h-32 rounded-[28px] overflow-hidden relative group/avatar">
+         <div className="absolute -bottom-10 md:-bottom-16 left-4 md:left-8 p-1 md:p-1.5 bg-jtweet-black rounded-2xl md:rounded-[32px] border-4 border-jtweet-black z-10 shadow-2xl overflow-hidden">
+            <div className="w-20 h-20 md:w-32 md:h-32 rounded-xl md:rounded-[28px] overflow-hidden relative group/avatar">
               <img src={profileUser.avatar} className="w-full h-full object-cover transition-transform group-hover/avatar:scale-110" alt="Avatar" referrerPolicy="no-referrer" />
               {profileUser.role === 'founder' && (
-                <div className="absolute bottom-2 right-2 bg-gradient-to-br from-yellow-400 to-amber-600 p-1.5 rounded-xl border border-white/20 shadow-[0_0_15px_rgba(251,191,36,0.5)]">
-                  <Crown size={20} className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+                <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 bg-gradient-to-br from-yellow-400 to-amber-600 p-1 md:p-1.5 rounded-lg md:rounded-xl border border-white/20 shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                  <Crown size={14} className="text-white md:size-5" />
                 </div>
               )}
               {(profileUser.role === 'admin' || profileUser.role === 'founder') && (
-                <div className="absolute bottom-2 right-2 bg-jtweet-black/80 backdrop-blur-md p-1.5 rounded-xl border border-blue-400/30">
-                  <BadgeCheck size={16} className="text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 bg-jtweet-black/80 backdrop-blur-md p-1 md:p-1.5 rounded-lg md:rounded-xl border border-blue-400/30">
+                  <BadgeCheck size={12} className="text-blue-400 md:size-4" />
                 </div>
               )}
             </div>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end p-6 gap-3 pt-4">
+      <div className="flex justify-end p-4 md:p-6 gap-2 md:gap-3 pt-3 md:pt-4">
          {isMe ? (
            <>
              <button 

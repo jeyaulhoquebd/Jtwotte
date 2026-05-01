@@ -3,6 +3,7 @@ import {
   collection, 
   query, 
   orderBy, 
+  where,
   onSnapshot, 
   addDoc, 
   serverTimestamp, 
@@ -67,6 +68,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+export type ReactionType = 'like' | 'love' | 'insightful' | 'fire' | 'rocket';
+
 export interface Tweet {
   id: string;
   authorId: string;
@@ -74,6 +77,7 @@ export interface Tweet {
   timestamp: any;
   type: 'tweet' | 'retweet' | 'reply';
   likesCount: number;
+  reactions?: Record<ReactionType, number>;
   retweetsCount: number;
   repliesCount: number;
   impressions?: number;
@@ -95,6 +99,23 @@ export interface Tweet {
   };
 }
 
+interface TweetContextType {
+  tweets: Tweet[];
+  loading: boolean;
+  theme: 'cyber' | 'dark';
+  toggleTheme: () => void;
+  postTweet: (content: string, media?: { url: string, type: string }) => Promise<void>;
+  retweet: (originalTweetId: string, content?: string) => Promise<void>;
+  toggleLike: (tweetId: string) => Promise<void>;
+  toggleReaction: (tweetId: string, type: ReactionType) => Promise<void>;
+  deleteTweet: (tweetId: string) => Promise<void>;
+  deleteAllTweets: () => Promise<void>;
+  addComment: (tweetId: string, content: string) => Promise<void>;
+  getComments: (tweetId: string) => Promise<Comment[]>;
+  isLiked: (tweetId: string) => boolean;
+  getUserReaction: (tweetId: string) => ReactionType | null;
+}
+
 interface Comment {
   id: string;
   tweetId: string;
@@ -107,19 +128,6 @@ interface Comment {
   };
 }
 
-interface TweetContextType {
-  tweets: Tweet[];
-  loading: boolean;
-  postTweet: (content: string, media?: { url: string, type: string }) => Promise<void>;
-  retweet: (originalTweetId: string, content?: string) => Promise<void>;
-  toggleLike: (tweetId: string) => Promise<void>;
-  deleteTweet: (tweetId: string) => Promise<void>;
-  deleteAllTweets: () => Promise<void>;
-  addComment: (tweetId: string, content: string) => Promise<void>;
-  getComments: (tweetId: string) => Promise<Comment[]>;
-  isLiked: (tweetId: string) => boolean;
-}
-
 const TweetContext = createContext<TweetContextType | undefined>(undefined);
 
 export function TweetProvider({ children }: { children: React.ReactNode }) {
@@ -127,13 +135,53 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   const { sendNotification } = useNotifications();
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [likedTweets, setLikedTweets] = useState<Set<string>>(new Set());
+  const [userReactions, setUserReactions] = useState<Record<string, ReactionType>>( {});
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'cyber' | 'dark'>(() => {
+    const saved = localStorage.getItem('jtweet-theme');
+    return (saved as 'cyber' | 'dark') || 'cyber';
+  });
+
+  const toggleTheme = () => {
+    setTheme(prev => {
+      const next = prev === 'cyber' ? 'dark' : 'cyber';
+      localStorage.setItem('jtweet-theme', next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   useEffect(() => {
     if (!user) {
       setLikedTweets(new Set());
+      setUserReactions({});
       return;
     }
+
+    // Fetch user reactions
+    const q = query(collection(db, 'user_reactions'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reactions: Record<string, ReactionType> = {};
+      const likes = new Set<string>();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        reactions[data.tweetId] = data.type;
+        if (data.type === 'like') likes.add(data.tweetId);
+      });
+      setUserReactions(reactions);
+      setLikedTweets(likes);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'user_reactions');
+    });
+
+    return unsubscribe;
   }, [user]);
 
   useEffect(() => {
@@ -260,6 +308,19 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   const deleteTweet = async (tweetId: string) => {
     if (!user) return;
     try {
+      const tweetDoc = await getDoc(doc(db, 'tweets', tweetId));
+      if (!tweetDoc.exists()) return;
+      
+      const tweetData = tweetDoc.data();
+      const isAdminEmail = user?.email === 'jeyaulhoque2025@gmail.com' || user?.email === 'jeyaulbooks@gmail.com';
+      const isAdmin = user.role === 'admin' || user.role === 'founder' || isAdminEmail;
+      const isOwner = tweetData.authorId === user.uid;
+
+      if (!isAdmin && !isOwner) {
+        alert("Authorization failure: Node ownership required for signal redaction.");
+        return;
+      }
+
       await deleteDoc(doc(db, 'tweets', tweetId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `tweets/${tweetId}`);
@@ -272,9 +333,9 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    if (!confirm("CRITICAL ACTION: This will permanently erase ALL signals from the network. Proceed?")) {
-      return;
-    }
+      if (!window.confirm("CRITICAL ACTION: This will permanently erase ALL signals from the network. This cannot be undone. Proceed?")) {
+        return;
+      }
 
     try {
       const snapshot = await getDocs(collection(db, 'tweets'));
@@ -388,25 +449,42 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const toggleLike = async (tweetId: string) => {
+  const toggleReaction = async (tweetId: string, type: ReactionType) => {
     if (!user) return;
-    const likeRef = doc(db, 'tweets', tweetId, 'likes', user.uid);
+    const reactionRef = doc(db, 'user_reactions', `${user.uid}_${tweetId}`);
     const tweetRef = doc(db, 'tweets', tweetId);
     
     try {
-      const likeSnap = await getDoc(likeRef);
-      if (likeSnap.exists()) {
-        await deleteDoc(likeRef);
-        await updateDoc(tweetRef, { likesCount: increment(-1) });
-        setLikedTweets(prev => {
-          const next = new Set(prev);
-          next.delete(tweetId);
-          return next;
+      const reactionSnap = await getDoc(reactionRef);
+      const existingReaction = reactionSnap.exists() ? reactionSnap.data().type as ReactionType : null;
+
+      if (existingReaction === type) {
+        // Remove reaction
+        await deleteDoc(reactionRef);
+        await updateDoc(tweetRef, {
+          [`reactions.${type}`]: increment(-1),
+          likesCount: type === 'like' ? increment(-1) : increment(0)
+        });
+      } else if (existingReaction) {
+        // Change reaction
+        await updateDoc(reactionRef, { type, updatedAt: serverTimestamp() });
+        await updateDoc(tweetRef, {
+          [`reactions.${existingReaction}`]: increment(-1),
+          [`reactions.${type}`]: increment(1),
+          likesCount: type === 'like' ? increment(1) : (existingReaction === 'like' ? increment(-1) : increment(0))
         });
       } else {
-        await setDoc(likeRef, { createdAt: serverTimestamp() });
-        await updateDoc(tweetRef, { likesCount: increment(1) });
-        setLikedTweets(prev => new Set(prev).add(tweetId));
+        // New reaction
+        await setDoc(reactionRef, { 
+          userId: user.uid, 
+          tweetId, 
+          type, 
+          createdAt: serverTimestamp() 
+        });
+        await updateDoc(tweetRef, {
+          [`reactions.${type}`]: increment(1),
+          likesCount: type === 'like' ? increment(1) : increment(0)
+        });
 
         // Notify tweet author
         const tweetSnap = await getDoc(tweetRef);
@@ -414,35 +492,43 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
           const tweetData = tweetSnap.data();
           if (tweetData.authorId !== user.uid) {
              await sendNotification(tweetData.authorId, {
-               type: 'like',
+               type: 'reaction',
                senderId: user.uid,
                relatedId: tweetId,
-               content: 'energized your signal'
+               content: `reacted with ${type} to your signal`
              });
           }
         }
       }
     } catch (error) {
-       handleFirestoreError(error, OperationType.WRITE, `tweets/${tweetId}/likes/${user.uid}`);
+       handleFirestoreError(error, OperationType.WRITE, `user_reactions/${user.uid}_${tweetId}`);
     }
   };
 
+  const getUserReaction = (tweetId: string) => {
+    return userReactions[tweetId] || null;
+  };
+
   const isLiked = (tweetId: string) => {
-    return likedTweets.has(tweetId);
+    return userReactions[tweetId] === 'like';
   };
 
   return (
     <TweetContext.Provider value={{ 
       tweets, 
       loading, 
+      theme,
+      toggleTheme,
       postTweet, 
       retweet, 
-      toggleLike, 
+      toggleLike: (id) => toggleReaction(id, 'like'),
+      toggleReaction,
       deleteTweet, 
       deleteAllTweets,
       addComment, 
       getComments, 
-      isLiked 
+      isLiked,
+      getUserReaction
     }}>
       {children}
     </TweetContext.Provider>

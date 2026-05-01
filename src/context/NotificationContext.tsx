@@ -19,7 +19,7 @@ import { useAuth } from './AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'retweet' | 'follow' | 'mention' | 'broadcast';
+  type: 'like' | 'comment' | 'retweet' | 'follow' | 'mention' | 'broadcast' | 'reaction';
   senderId: string;
   relatedId?: string; // tweetId or userId
   timestamp: any;

@@ -14,11 +14,23 @@
 
 @layer base {
   body {
-    @apply bg-jtweet-black text-jtweet-silver font-sans antialiased selection:bg-jtweet-cyan/30 selection:text-jtweet-cyan;
+    @apply bg-jtweet-black text-jtweet-silver font-sans antialiased selection:bg-jtweet-cyan/30 selection:text-jtweet-cyan transition-colors duration-500;
     background-image: 
-      radial-gradient(at 0% 0%, rgba(0, 255, 242, 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(0, 255, 242, 0.03) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, var(--bg-glow-start) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, var(--bg-glow-end) 0px, transparent 50%);
     background-attachment: fixed;
+  }
+
+  :root {
+    --bg-glow-start: rgba(0, 255, 242, 0.05);
+    --bg-glow-end: rgba(0, 255, 242, 0.03);
+  }
+
+  .dark {
+    --color-jtweet-black: #020202;
+    --color-jtweet-cyan: #ffffff;
+    --bg-glow-start: rgba(255, 255, 255, 0.02);
+    --bg-glow-end: rgba(255, 255, 255, 0.01);
   }
 }
 

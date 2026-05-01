@@ -60,6 +60,30 @@ service cloud.firestore {
         && data.type in ['tweet', 'retweet', 'reply'];
     }
 
+    function isValidUserReaction(data) {
+      return data.keys().hasAll(['userId', 'tweetId', 'type', 'createdAt'])
+        && data.userId == request.auth.uid
+        && data.tweetId is string && data.tweetId.size() <= 128
+        && data.type in ['like', 'love', 'insightful', 'fire', 'rocket']
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.get('updatedAt', null) != null));
+    }
+
+    match /user_reactions/{reactionId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() 
+        && reactionId == request.auth.uid + '_' + incoming().tweetId
+        && isValidUserReaction(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn()
+        && isOwner(existing().userId)
+        && isValidUserReaction(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['type', 'updatedAt']);
+      allow delete: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+    }
+
     match /tweets/{tweetId} {
       allow read: if true;
       allow create: if isSignedIn()

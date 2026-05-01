@@ -10,18 +10,23 @@ import {
   LogOut,
   Send,
   MoreHorizontal,
-  ShieldCheck
+  ShieldCheck,
+  Moon,
+  Sun,
+  Zap
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useMessages } from '../context/MessageContext';
+import { useTweets } from '../context/TweetContext';
 import Logo from '../components/Logo';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const { conversations } = useMessages();
+  const { theme, toggleTheme } = useTweets();
   const navigate = useNavigate();
 
   // Simple unread calculation for messages based on conversations
@@ -33,11 +38,44 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center max-w-7xl mx-auto px-4 gap-4">
-      {/* Sidebar */}
+    <div className="min-h-screen flex justify-center max-w-7xl mx-auto px-0 md:px-4 gap-0 md:gap-4 relative">
+      {/* Mobile Header (Top) */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 glass flex items-center justify-between px-4 z-50 border-b border-white/10">
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+          <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover" onClick={() => navigate(`/profile/${user?.uid}`)} />
+        </div>
+        <div className="flex items-center gap-4">
+           <div className="scale-75 origin-center">
+             <Logo />
+           </div>
+           <button 
+             onClick={toggleTheme}
+             className="p-1.5 rounded-full glass border-white/10 text-jtweet-cyan"
+           >
+             {theme === 'cyber' ? <Zap size={16} /> : <Moon size={16} />}
+           </button>
+        </div>
+        <div className="w-8 flex justify-center">
+          <Settings size={20} className="text-white/40" onClick={() => navigate('/settings')} />
+        </div>
+      </header>
+
+      {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 py-6 border-r border-white/10 pr-4">
         <Logo />
-        <nav className="mt-8 space-y-2">
+        <div className="mt-8 space-y-2">
+           <button 
+             onClick={toggleTheme}
+             className="w-full flex items-center gap-4 p-4 px-6 rounded-2xl transition-all group relative border border-transparent text-white/40 hover:bg-white/5 hover:text-white"
+           >
+             <span className="group-hover:scale-110 transition-transform text-white/20 group-hover:text-white">
+               {theme === 'cyber' ? <Zap size={24} className="text-jtweet-cyan shadow-cyan" /> : <Moon size={24} />}
+             </span>
+             <span className="text-sm font-bold uppercase tracking-[0.1em]">{theme === 'cyber' ? 'Cyber Mode' : 'Dark Mode'}</span>
+           </button>
+           <div className="h-px bg-white/5 mx-6 my-2" />
+        </div>
+        <nav className="space-y-2">
           <NavItem to="/" icon={<Home size={24} />} label="Home" />
           <NavItem to="/explore" icon={<Search size={24} />} label="Explore" />
           {user?.role === 'admin' && (
@@ -92,7 +130,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Areas */}
-      <main className="flex-1 max-w-xl border-x border-white/10 min-h-screen">
+      <main className="flex-1 w-full max-w-xl md:border-x border-white/10 min-h-screen pt-14 md:pt-0 mb-16 md:mb-0">
         <Outlet />
       </main>
 
@@ -118,6 +156,14 @@ export default function Layout() {
           </div>
         </div>
       </aside>
+
+      {/* Floating Action Button (Mobile) */}
+      <button 
+        onClick={() => navigate('/')} 
+        className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-jtweet-cyan text-jtweet-black rounded-full shadow-cyan flex items-center justify-center z-40 active:scale-90 transition-transform"
+      >
+        <Send size={24} />
+      </button>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 glass h-16 flex items-center justify-around z-50 border-t border-white/10">

@@ -1,10 +1,11 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState, ReactNode, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send, Crown, BadgeCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send, Crown, BadgeCheck, Zap, Rocket, Flame, Brain } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../context/AuthContext';
-import { useTweets, Tweet } from '../context/TweetContext';
+import { useTweets, Tweet, ReactionType } from '../context/TweetContext';
 import MediaRenderer from './MediaRenderer';
 
 interface TweetCardProps {
@@ -12,21 +13,87 @@ interface TweetCardProps {
   onLike: () => void;
   onRetweet: () => void;
   onDelete: () => void;
-  key?: React.Key;
+}
+
+const REACTION_CONFIG: Record<ReactionType, { icon: ReactNode, color: string, label: string }> = {
+  like: { icon: <Heart size={14} />, color: 'red', label: 'Energize' },
+  love: { icon: <Heart size={14} fill="currentColor" />, color: 'pink', label: 'Sync' },
+  insightful: { icon: <Brain size={14} />, color: 'purple', label: 'Neural' },
+  fire: { icon: <Flame size={14} />, color: 'orange', label: 'Critical' },
+  rocket: { icon: <Rocket size={14} />, color: 'cyan', label: 'Launch' }
+};
+
+function FormattedContent({ content }: { content: string }) {
+  const navigate = useNavigate();
+
+  const renderers = {
+    p: ({ children }: any) => {
+      if (typeof children === 'string' || Array.isArray(children)) {
+        const text = Array.isArray(children) ? children.join('') : children;
+        const words = String(text).split(/(\s+)/);
+        return (
+          <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">
+            {words.map((word, i) => {
+              if (word.startsWith('#')) {
+                return (
+                  <span 
+                    key={i} 
+                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/?q=${encodeURIComponent(word)}`);
+                    }}
+                  >
+                    {word}
+                  </span>
+                );
+              }
+              if (word.startsWith('@')) {
+                return (
+                  <span 
+                    key={i} 
+                    className="text-jtweet-cyan hover:underline cursor-pointer font-bold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/profile/${word.substring(1)}`);
+                    }}
+                  >
+                    {word}
+                  </span>
+                );
+              }
+              return word;
+            })}
+          </p>
+        );
+      }
+      return <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">{children}</p>;
+    }
+  };
+
+  return (
+    <div className="markdown-body">
+      <ReactMarkdown components={renderers}>{content}</ReactMarkdown>
+    </div>
+  );
 }
 
 export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetCardProps) {
   const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
-  const { addComment, getComments, isLiked } = useTweets();
+  const { addComment, getComments, isLiked, toggleReaction, getUserReaction } = useTweets();
+  const reactionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const timestamp = tweet.timestamp?.toDate ? formatDistanceToNow(tweet.timestamp.toDate(), { addSuffix: true }) : 'just now';
   const isRetweet = tweet.type === 'retweet';
-  const isAdmin = user?.role === 'admin' || user?.role === 'founder';
+  const isAdminEmail = user?.email === 'jeyaulhoque2025@gmail.com' || user?.email === 'jeyaulbooks@gmail.com';
+  const isAdmin = user?.role === 'admin' || user?.role === 'founder' || isAdminEmail;
   const isFounder = tweet.author?.role === 'founder';
   const isAuthor = user?.uid === tweet.authorId;
+  const userReaction = getUserReaction(tweet.id);
   const liked = isLiked(tweet.id);
 
   const loadComments = async () => {
@@ -49,21 +116,21 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -2 }}
-      className="p-5 hover:bg-white/2 transition-all group relative border-b border-white/5"
+      className="p-3 md:p-5 hover:bg-white/2 transition-all group relative border-b border-white/5"
     >
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-jtweet-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       
       {isRetweet && (
-        <div className="flex items-center gap-2 mb-3 ml-12">
-          <Repeat2 size={14} className="text-jtweet-cyan animate-pulse" />
-          <span className="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">{tweet.author?.name} echoed this signal</span>
+        <div className="flex items-center gap-2 mb-3 ml-10 md:ml-12">
+          <Repeat2 size={12} className="text-jtweet-cyan animate-pulse md:size-14" />
+          <span className="text-[10px] md:text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">{tweet.author?.name} echoed this signal</span>
         </div>
       )}
 
-      <div className="flex gap-4 relative">
+      <div className="flex gap-3 md:gap-4 relative">
         <Link to={`/profile/${tweet.authorId}`} className="relative h-fit shrink-0 group/avatar" onClick={(e) => e.stopPropagation()}>
-          <div className="w-14 h-14 rounded-2xl overflow-hidden glass border border-white/10 group-hover/avatar:border-jtweet-cyan/50 transition-all p-0.5">
-            <img src={tweet.author?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[14px]" referrerPolicy="no-referrer" />
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl overflow-hidden glass border border-white/10 group-hover/avatar:border-jtweet-cyan/50 transition-all p-0.5">
+            <img src={tweet.author?.avatar} alt="Avatar" className="w-full h-full object-cover rounded-[10px] md:rounded-[14px]" referrerPolicy="no-referrer" />
           </div>
           {isFounder && (
             <div className="absolute -top-2 -left-2 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg p-1 border border-white/20 shadow-[0_0_15px_rgba(251,191,36,0.5)] z-10 animate-bounce">
@@ -98,16 +165,18 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
               <span className="text-white/10">·</span>
               <span className="text-white/20 text-xs">{timestamp}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {(isAuthor || isAdmin) && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    if(confirm("Securely erase this signal from the network?")) onDelete();
+                    if(window.confirm("CRITICAL: This signal will be permanently redacted from history. Proceed?")) onDelete();
                   }}
-                  className="p-2 rounded-full hover:bg-red-400/10 text-white/5 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+                  className="p-2 rounded-full hover:bg-red-400/10 text-white/30 hover:text-red-400 transition-all md:opacity-0 md:group-hover:opacity-100 flex items-center gap-1.5"
+                  title="Purge Signal"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={14} className="md:size-4" />
+                  <span className="text-[9px] font-bold uppercase tracking-tight md:hidden">Delete</span>
                 </button>
               )}
               <button className="text-white/20 hover:text-jtweet-cyan transition-colors p-1 rounded-full hover:bg-jtweet-cyan/10">
@@ -117,7 +186,7 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
           </div>
           
           {tweet.content && (
-            <p className="mt-2 text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">{tweet.content}</p>
+            <FormattedContent content={tweet.content} />
           )}
 
           {tweet.media && <MediaRenderer media={tweet.media} />}
@@ -129,12 +198,12 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                   <span className="text-xs font-bold text-white/60">{tweet.originalTweet.author?.name}</span>
                   <span className="text-[10px] text-white/20">· Original Signal</span>
                </div>
-               <p className="text-sm text-white/70 line-clamp-3">{tweet.originalTweet.content}</p>
+               <FormattedContent content={tweet.originalTweet.content} />
                {tweet.originalTweet.media && <MediaRenderer media={tweet.originalTweet.media} />}
             </div>
           )}
           
-          <div className="mt-4 flex items-center justify-between text-white/20 max-w-sm">
+          <div className="mt-4 flex items-center justify-between text-white/20 max-w-sm relative">
              <InteractionBtn icon={<MessageCircle size={18} />} count={tweet.repliesCount} color="cyan" onClick={() => setShowComments(!showComments)} />
              <InteractionBtn 
                icon={<Repeat2 size={18} />} 
@@ -145,16 +214,69 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                  onRetweet();
                }}
              />
-             <InteractionBtn 
-               icon={<Heart size={18} className={liked ? "fill-red-400 text-red-400" : ""} />} 
-               count={tweet.likesCount} 
-               color="red" 
-               active={liked}
-               onClick={(e) => {
-                 e.stopPropagation();
-                 onLike();
+             
+             <div 
+               className="relative"
+               onMouseEnter={() => {
+                 if (window.innerWidth > 768) {
+                    if (reactionTimeout.current) clearTimeout(reactionTimeout.current);
+                    setShowReactions(true);
+                 }
                }}
-             />
+               onMouseLeave={() => {
+                 if (window.innerWidth > 768) {
+                    reactionTimeout.current = setTimeout(() => setShowReactions(false), 500);
+                 }
+               }}
+               onClick={(e) => {
+                 if (window.innerWidth <= 768) {
+                   e.stopPropagation();
+                   setShowReactions(!showReactions);
+                 }
+               }}
+             >
+               <AnimatePresence>
+                 {showReactions && (
+                   <motion.div 
+                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                     exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                     className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1.5 glass rounded-full flex gap-1 z-50 border border-white/10 backdrop-blur-3xl shadow-2xl shadow-black"
+                   >
+                     {(Object.keys(REACTION_CONFIG) as ReactionType[]).map((type) => {
+                       const count = tweet.reactions?.[type] || 0;
+                       return (
+                         <button
+                           key={type}
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             toggleReaction(tweet.id, type);
+                             setShowReactions(false);
+                           }}
+                           className={`p-2 rounded-full hover:bg-white/10 transition-all flex flex-col items-center gap-0.5 ${userReaction === type ? 'bg-white/10 text-jtweet-cyan scale-110' : 'text-white/40'}`}
+                           title={REACTION_CONFIG[type].label}
+                         >
+                           {REACTION_CONFIG[type].icon}
+                           {count > 0 && <span className="text-[7px] font-bold">{count}</span>}
+                         </button>
+                       );
+                     })}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+               
+               <InteractionBtn 
+                 icon={userReaction ? REACTION_CONFIG[userReaction].icon : <Zap size={18} />} 
+                 count={(tweet.likesCount || 0) + Object.values(tweet.reactions || {}).reduce((a, b) => (typeof b === 'number' ? a + b : a), 0)} 
+                 color={userReaction ? (REACTION_CONFIG[userReaction].color as any) : "red"} 
+                 active={!!userReaction}
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onLike();
+                 }}
+               />
+             </div>
+             
              <InteractionBtn icon={<Share2 size={18} />} color="cyan" />
           </div>
 
@@ -207,8 +329,8 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
   );
 }
 
-function InteractionBtn({ icon, count, color, active, onClick }: { icon: ReactNode, count?: number, color: 'cyan' | 'red' | 'green', active?: boolean, onClick?: (e: any) => void }) {
-  const configs = {
+function InteractionBtn({ icon, count, color, active, onClick }: { icon: ReactNode, count?: number, color: string, active?: boolean, onClick?: (e: any) => void }) {
+  const configs: Record<string, any> = {
     cyan: {
       active: 'text-jtweet-cyan shadow-[0_0_15px_rgba(0,255,242,0.3)] bg-jtweet-cyan/10',
       hover: 'hover:text-jtweet-cyan hover:bg-jtweet-cyan/5 hover:shadow-[0_0_10px_rgba(0,255,242,0.1)]'
@@ -216,6 +338,18 @@ function InteractionBtn({ icon, count, color, active, onClick }: { icon: ReactNo
     red: {
       active: 'text-red-400 shadow-[0_0_15px_rgba(248,113,113,0.3)] bg-red-400/10',
       hover: 'hover:text-red-400 hover:bg-red-400/5 hover:shadow-[0_0_10px_rgba(248,113,113,0.1)]'
+    },
+    orange: {
+      active: 'text-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.3)] bg-orange-400/10',
+      hover: 'hover:text-orange-400 hover:bg-orange-400/5 hover:shadow-[0_0_10px_rgba(251,146,60,0.1)]'
+    },
+    pink: {
+      active: 'text-pink-400 shadow-[0_0_15px_rgba(244,114,182,0.3)] bg-pink-400/10',
+      hover: 'hover:text-pink-400 hover:bg-pink-400/5 hover:shadow-[0_0_10px_rgba(244,114,182,0.1)]'
+    },
+    purple: {
+      active: 'text-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.3)] bg-purple-400/10',
+      hover: 'hover:text-purple-400 hover:bg-purple-400/5 hover:shadow-[0_0_10px_rgba(192,132,252,0.1)]'
     },
     green: {
       active: 'text-green-400 shadow-[0_0_15px_rgba(74,222,128,0.3)] bg-green-400/10',
@@ -226,10 +360,12 @@ function InteractionBtn({ icon, count, color, active, onClick }: { icon: ReactNo
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-2 group/btn transition-all p-2.5 px-4 rounded-2xl border border-transparent ${active ? configs[color].active + ' border-white/5' : 'text-white/30 ' + configs[color].hover} active:scale-90`}
+      className={`flex items-center gap-1.5 md:gap-2 group/btn transition-all p-2 md:p-2.5 px-3 md:px-4 rounded-xl md:rounded-2xl border border-transparent ${active ? configs[color].active + ' border-white/5' : 'text-white/30 ' + configs[color].hover} active:scale-90`}
     >
-      <div className="group-hover/btn:scale-125 transition-transform duration-300">{icon}</div>
-      {count !== undefined && <span className={`text-[10px] font-bold tracking-widest ${active ? 'opacity-100' : 'opacity-40'}`}>{count || '0'}</span>}
+      <div className="group-hover/btn:scale-125 transition-transform duration-300">
+        {icon}
+      </div>
+      {count !== undefined && <span className={`text-[9px] md:text-[10px] font-bold tracking-widest ${active ? 'opacity-100' : 'opacity-40'}`}>{count || '0'}</span>}
     </button>
   );
 }
