@@ -32,6 +32,13 @@
     --bg-glow-start: rgba(255, 255, 255, 0.02);
     --bg-glow-end: rgba(255, 255, 255, 0.01);
   }
+
+  .plasma {
+    --color-jtweet-black: #0a000a;
+    --color-jtweet-cyan: #ff00ff;
+    --bg-glow-start: rgba(255, 0, 255, 0.08);
+    --bg-glow-end: rgba(0, 255, 255, 0.04);
+  }
 }
 
 @layer components {

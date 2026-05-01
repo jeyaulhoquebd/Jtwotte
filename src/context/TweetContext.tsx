@@ -102,8 +102,9 @@ export interface Tweet {
 interface TweetContextType {
   tweets: Tweet[];
   loading: boolean;
-  theme: 'cyber' | 'dark';
+  theme: 'cyber' | 'dark' | 'plasma';
   toggleTheme: () => void;
+  setTheme: (theme: 'cyber' | 'dark' | 'plasma') => void;
   postTweet: (content: string, media?: { url: string, type: string }) => Promise<void>;
   retweet: (originalTweetId: string, content?: string) => Promise<void>;
   toggleLike: (tweetId: string) => Promise<void>;
@@ -137,24 +138,23 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
   const [likedTweets, setLikedTweets] = useState<Set<string>>(new Set());
   const [userReactions, setUserReactions] = useState<Record<string, ReactionType>>( {});
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<'cyber' | 'dark'>(() => {
+  const [theme, setTheme] = useState<'cyber' | 'dark' | 'plasma'>(() => {
     const saved = localStorage.getItem('jtweet-theme');
-    return (saved as 'cyber' | 'dark') || 'cyber';
+    return (saved as 'cyber' | 'dark' | 'plasma') || 'cyber';
   });
 
   const toggleTheme = () => {
     setTheme(prev => {
-      const next = prev === 'cyber' ? 'dark' : 'cyber';
+      const next = prev === 'cyber' ? 'dark' : (prev === 'dark' ? 'plasma' : 'cyber');
       localStorage.setItem('jtweet-theme', next);
       return next;
     });
   };
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    document.documentElement.classList.remove('dark', 'plasma');
+    if (theme !== 'cyber') {
+      document.documentElement.classList.add(theme);
     }
   }, [theme]);
 
@@ -519,6 +519,7 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       loading, 
       theme,
       toggleTheme,
+      setTheme,
       postTweet, 
       retweet, 
       toggleLike: (id) => toggleReaction(id, 'like'),

@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   Moon,
   Sun,
-  Zap
+  Zap,
+  Activity
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -52,7 +53,7 @@ export default function Layout() {
              onClick={toggleTheme}
              className="p-1.5 rounded-full glass border-white/10 text-jtweet-cyan"
            >
-             {theme === 'cyber' ? <Zap size={16} /> : <Moon size={16} />}
+             {theme === 'cyber' ? <Zap size={16} /> : (theme === 'dark' ? <Moon size={16} /> : <Activity size={16} className="text-[#ff00ff]" />)}
            </button>
         </div>
         <div className="w-8 flex justify-center">
@@ -69,9 +70,9 @@ export default function Layout() {
              className="w-full flex items-center gap-4 p-4 px-6 rounded-2xl transition-all group relative border border-transparent text-white/40 hover:bg-white/5 hover:text-white"
            >
              <span className="group-hover:scale-110 transition-transform text-white/20 group-hover:text-white">
-               {theme === 'cyber' ? <Zap size={24} className="text-jtweet-cyan shadow-cyan" /> : <Moon size={24} />}
+               {theme === 'cyber' ? <Zap size={24} className="text-jtweet-cyan shadow-cyan" /> : (theme === 'dark' ? <Moon size={24} /> : <Activity size={24} className="text-[#ff00ff]" />)}
              </span>
-             <span className="text-sm font-bold uppercase tracking-[0.1em]">{theme === 'cyber' ? 'Cyber Mode' : 'Dark Mode'}</span>
+             <span className="text-sm font-bold uppercase tracking-[0.1em]">{theme === 'cyber' ? 'Cyber Mode' : (theme === 'dark' ? 'Dark Mode' : 'Plasma Mode')}</span>
            </button>
            <div className="h-px bg-white/5 mx-6 my-2" />
         </div>
