@@ -1,33 +1,48 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export async function suggestTweet(topic: string) {
-  if (!process.env.GEMINI_API_KEY) {
-    return ["AI insights currently restricted. (Missing API Key)"];
-  }
-  
+export async function summarizeTweet(content: string): Promise<string> {
   try {
-    const prompt = `System Instruction: You are the Neural Core AI for JTweet, a cyber-fusion microblogging platform. Your goal is to help users synthesize high-impact "Signals" (tweets).
-    
-    Task: Generate 3 distinct and engaging Signals about this topic: "${topic}".
-    
-    Style Guidelines:
-    - Tone: Futuristic, visionary, technical but accessible, and slightly provocative.
-    - Aesthetics: Cyber-fusion, high-performance, neural-inked.
-    - Constraints: Maximum 180 characters per Signal. Use relevant technical or futuristic metaphors (e.g., protocol, synchronization, matrix, sector, uplink).
-    
-    Format: Return ONLY the results as a single line, with each Signal separated by the "||" token.`;
-    
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: prompt
+      contents: `Please provide a very concise, one-sentence summary of the following signal (tweet): "${content}"`,
     });
 
-    const text = response.text || "";
-    return text.split('||').map(t => t.trim()).filter(t => t.length > 0);
+    return response.text?.trim() || "Summary unavailable.";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return ["The future of communication is here.", "JTweet: Where intelligence hits the feed.", "Connect at the speed of thought."];
+    console.error("Summarization error:", error);
+    return "Failed to process signal summary.";
+  }
+}
+
+export async function analyzeSentiment(content: string): Promise<'positive' | 'neutral' | 'negative'> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analyze the sentiment of this text and return ONLY one word: "positive", "neutral", or "negative". Text: "${content}"`,
+    });
+
+    const sentiment = response.text?.toLowerCase().trim();
+    if (sentiment?.includes('positive')) return 'positive';
+    if (sentiment?.includes('negative')) return 'negative';
+    return 'neutral';
+  } catch (error) {
+    return 'neutral';
+  }
+}
+
+export async function suggestTweet(topic: string): Promise<string[]> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Suggest 3 creative and futuristic signals (tweets) about ${topic}. Return ONLY a JSON array of strings.`,
+      config: { responseMimeType: "application/json" }
+    });
+
+    const suggestions = JSON.parse(response.text || "[]");
+    return Array.isArray(suggestions) ? suggestions : [response.text || ""];
+  } catch (error) {
+    return ["The future is indeterminate.", "Connectivity flux detected.", "Neural link established."];
   }
 }

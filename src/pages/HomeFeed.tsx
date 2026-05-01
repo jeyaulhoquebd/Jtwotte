@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Repeat2, BadgeCheck, Image as ImageIcon, X, Search, Hash } from 'lucide-react';
+import { Sparkles, Repeat2, BadgeCheck, Image as ImageIcon, X, Search, Hash, Brain, Filter, Plus, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTweets } from '../context/TweetContext';
@@ -12,7 +12,7 @@ type FeedType = 'for-you' | 'following' | 'trending' | 'search';
 
 export default function HomeFeed() {
   const { user } = useAuth();
-  const { tweets, postTweet, loading, toggleLike, retweet, deleteTweet } = useTweets();
+  const { tweets, postTweet, loading, toggleLike, retweet, deleteTweet, customFilters, addCustomFilter, removeCustomFilter } = useTweets();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('q');
   
@@ -24,6 +24,8 @@ export default function HomeFeed() {
   const [activeFeed, setActiveFeed] = useState<FeedType>(queryParam ? 'search' : 'for-you');
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [showFilterAdd, setShowFilterAdd] = useState(false);
+  const [newFilter, setNewFilter] = useState('');
 
   useEffect(() => {
     if (queryParam) {
@@ -42,6 +44,10 @@ export default function HomeFeed() {
         t.author?.handle.toLowerCase().includes(q)
       );
     }
+    
+    // Applying custom filters if active and matching keywords
+    const activeFilters = customFilters.filter(f => activeFeed === 'search' && queryParam === f);
+    // Actually, we can just treat custom filters as shortcuts
 
     if (activeFeed === 'trending') {
       return base.sort((a, b) => (b.likesCount + b.retweetsCount) - (a.likesCount + a.retweetsCount));
@@ -114,12 +120,64 @@ export default function HomeFeed() {
             {(user?.role === 'admin' || user?.role === 'founder') && <BadgeCheck size={18} className="text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] fill-blue-400/20" />}
           </h2>
           <div className="flex gap-2">
-             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-jtweet-cyan/5 border border-jtweet-cyan/20">
-               <div className="w-1.5 h-1.5 rounded-full bg-jtweet-cyan animate-pulse shadow-cyan" />
-               <span className="text-[10px] font-bold text-jtweet-cyan uppercase tracking-widest">Core Active</span>
-             </div>
+              <button 
+                onClick={() => setShowFilterAdd(!showFilterAdd)}
+                className="flex items-center gap-2 px-3 py-1 rounded-full bg-jtweet-cyan/5 border border-jtweet-cyan/20 hover:bg-jtweet-cyan/10 transition-colors"
+                title="Add Filter"
+              >
+                <Filter size={14} className="text-jtweet-cyan" />
+                <span className="text-[10px] font-bold text-jtweet-cyan uppercase tracking-widest">Filters</span>
+              </button>
           </div>
         </div>
+
+        <AnimatePresence>
+          {showFilterAdd && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="px-4 pb-4 border-b border-white/5 overflow-hidden"
+            >
+              <div className="flex flex-wrap gap-2 mb-3">
+                {customFilters.map(f => (
+                  <div key={f} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1 text-[10px] font-bold text-white/60">
+                    <button onClick={() => setSearchParams({ q: f })} className="hover:text-jtweet-cyan">#{f}</button>
+                    <X size={12} className="cursor-pointer hover:text-red-400" onClick={() => removeCustomFilter(f)} />
+                  </div>
+                ))}
+                {customFilters.length === 0 && <span className="text-[10px] text-white/20 uppercase tracking-widest py-1">No custom filters active</span>}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="New Neural Keyword..." 
+                  className="flex-1 bg-white/5 border-white/10 rounded-xl px-4 py-2 text-xs focus:ring-jtweet-cyan/50"
+                  value={newFilter}
+                  onChange={(e) => setNewFilter(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newFilter.trim()) {
+                      addCustomFilter(newFilter.trim());
+                      setNewFilter('');
+                    }
+                  }}
+                />
+                <button 
+                  onClick={() => {
+                    if (newFilter.trim()) {
+                      addCustomFilter(newFilter.trim());
+                      setNewFilter('');
+                    }
+                  }}
+                  className="bg-jtweet-cyan text-jtweet-black p-2 rounded-xl"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex px-4 divide-x divide-white/5 border-t border-white/5 overflow-x-auto custom-scrollbar">
            <FeedTab active={activeFeed === 'for-you'} label="Neural Sync" onClick={() => { setActiveFeed('for-you'); setSearchParams({}); }} />
            <FeedTab active={activeFeed === 'following'} label="Linked Nodes" onClick={() => { setActiveFeed('following'); setSearchParams({}); }} />

@@ -115,6 +115,11 @@ interface TweetContextType {
   getComments: (tweetId: string) => Promise<Comment[]>;
   isLiked: (tweetId: string) => boolean;
   getUserReaction: (tweetId: string) => ReactionType | null;
+  lastAction: { type: string, data: any } | null;
+  undoAction: () => Promise<void>;
+  customFilters: string[];
+  addCustomFilter: (filter: string) => void;
+  removeCustomFilter: (filter: string) => void;
 }
 
 interface Comment {
@@ -142,6 +147,24 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('jtweet-theme');
     return (saved as 'cyber' | 'dark' | 'plasma') || 'cyber';
   });
+  const [lastAction, setLastAction] = useState<{ type: string, data: any } | null>(null);
+  const [customFilters, setCustomFilters] = useState<string[]>(() => {
+    const saved = localStorage.getItem('jtweet-filters');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const addCustomFilter = (filter: string) => {
+    if (customFilters.includes(filter)) return;
+    const next = [...customFilters, filter];
+    setCustomFilters(next);
+    localStorage.setItem('jtweet-filters', JSON.stringify(next));
+  };
+
+  const removeCustomFilter = (filter: string) => {
+    const next = customFilters.filter(f => f !== filter);
+    setCustomFilters(next);
+    localStorage.setItem('jtweet-filters', JSON.stringify(next));
+  };
 
   const toggleTheme = () => {
     setTheme(prev => {
@@ -340,9 +363,28 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       await deleteDoc(doc(db, 'tweets', tweetId));
       
       // Cleanup associated data
+      // 1. Reactions
       const reactionsQuery = query(collection(db, 'user_reactions'), where('tweetId', '==', tweetId));
       getDocs(reactionsQuery).then(snap => {
         snap.forEach(d => deleteDoc(doc(db, 'user_reactions', d.id)).catch(() => {}));
+      });
+
+      // 2. Comments (In Firestore, subcollections must be deleted manually)
+      const commentsQuery = query(collection(db, 'tweets', tweetId, 'comments'));
+      getDocs(commentsQuery).then(snap => {
+        snap.forEach(d => deleteDoc(doc(db, 'tweets', tweetId, 'comments', d.id)).catch(() => {}));
+      });
+
+      // 3. Notifications
+      const notificationsQuery = query(collection(db, 'notifications'), where('relatedId', '==', tweetId));
+      getDocs(notificationsQuery).then(snap => {
+        snap.forEach(d => deleteDoc(doc(db, 'notifications', d.id)).catch(() => {}));
+      });
+
+      // 4. Bookmarks (if implemented)
+      const bookmarksQuery = query(collection(db, 'bookmarks'), where('tweetId', '==', tweetId));
+      getDocs(bookmarksQuery).then(snap => {
+        snap.forEach(d => deleteDoc(doc(db, 'bookmarks', d.id)).catch(() => {}));
       });
 
     } catch (error) {
@@ -482,6 +524,11 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       const reactionSnap = await getDoc(reactionRef);
       const existingReaction = reactionSnap.exists() ? reactionSnap.data().type as ReactionType : null;
 
+      setLastAction({ 
+        type: 'reaction', 
+        data: { tweetId, type, previousType: existingReaction } 
+      });
+
       if (existingReaction === type) {
         // Remove reaction
         await deleteDoc(reactionRef);
@@ -537,6 +584,30 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     return userReactions[tweetId] === 'like';
   };
 
+  const undoAction = async () => {
+    if (!lastAction) return;
+
+    const { type, data } = lastAction;
+    setLastAction(null);
+
+    try {
+      if (type === 'reaction') {
+        const { tweetId, previousType } = data;
+        if (previousType) {
+          await toggleReaction(tweetId, previousType);
+        } else {
+          // If it was a new reaction, toggling the same type again will remove it
+          await toggleReaction(tweetId, data.type);
+        }
+      } else if (type === 'post') {
+        // We'd need to track the ID of the posted tweet
+        if (data.id) await deleteTweet(data.id);
+      }
+    } catch (e) {
+      console.error("Undo failed", e);
+    }
+  };
+
   return (
     <TweetContext.Provider value={{ 
       tweets, 
@@ -553,7 +624,12 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
       addComment, 
       getComments, 
       isLiked,
-      getUserReaction
+      getUserReaction,
+      lastAction,
+      undoAction,
+      customFilters,
+      addCustomFilter,
+      removeCustomFilter
     }}>
       {children}
     </TweetContext.Provider>

@@ -13,6 +13,8 @@ import NotificationsPage from './pages/NotificationsPage';
 import MessagesPage from './pages/MessagesPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import NeuralNetworkPage from './pages/NeuralNetworkPage';
+import DeleteCenter from './pages/DeleteCenter';
 import { ShieldCheck, Zap } from 'lucide-react';
 
 // Placeholder Pages
@@ -92,6 +94,8 @@ export default function App() {
                     <Route path="messages" element={<MessagesPage />} />
                     <Route path="profile/:uid" element={<ProfilePage />} />
                     <Route path="settings" element={<SettingsPage />} />
+                    <Route path="network" element={<NeuralNetworkPage />} />
+                    <Route path="delete" element={<DeleteCenter />} />
                   </Route>
 
                   <Route path="*" element={<Navigate to="/" />} />

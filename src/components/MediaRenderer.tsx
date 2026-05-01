@@ -248,8 +248,9 @@ export default function MediaRenderer({ media }: MediaRendererProps) {
           {media.images.map((img, idx) => (
             <motion.div 
               key={idx}
-              whileHover={{ scale: 1.01 }}
-              className={`relative rounded-2xl overflow-hidden glass border border-white/10 shadow-lg group ${media.images && media.images.length === 1 ? 'aspect-auto max-h-[600px]' : 'aspect-square'}`}
+              whileHover={{ scale: 1.04, zIndex: 10 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className={`relative rounded-2xl overflow-hidden glass border border-white/10 shadow-lg group cursor-zoom-in ${media.images && media.images.length === 1 ? 'aspect-auto max-h-[600px]' : 'aspect-square'}`}
               onClick={() => !isLocalVideo && setZoomImg(img)}
             >
               {isLocalVideo ? (

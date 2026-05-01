@@ -1,12 +1,13 @@
 import React, { useState, ReactNode, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send, Crown, BadgeCheck, Zap, Rocket, Flame, Brain } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share2, MoreHorizontal, Trash2, ShieldCheck, Send, Crown, BadgeCheck, Zap, Rocket, Flame, Brain, Sparkles, Smile, Meh, Frown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../context/AuthContext';
 import { useTweets, Tweet, ReactionType } from '../context/TweetContext';
 import MediaRenderer from './MediaRenderer';
+import { summarizeTweet, analyzeSentiment } from '../services/geminiService';
 
 interface TweetCardProps {
   tweet: Tweet;
@@ -103,6 +104,28 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
   const { addComment, getComments, isLiked, toggleReaction, getUserReaction } = useTweets();
   const reactionTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [sentiment, setSentiment] = useState<'positive' | 'neutral' | 'negative' | null>(null);
+
+  useEffect(() => {
+    if (tweet.content && tweet.content.length > 200 && !sentiment) {
+      analyzeSentiment(tweet.content).then(setSentiment);
+    }
+  }, [tweet.content]);
+
+  const handleSummarize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (summary) {
+      setSummary(null);
+      return;
+    }
+    setIsSummarizing(true);
+    const result = await summarizeTweet(tweet.content);
+    setSummary(result);
+    setIsSummarizing(false);
+  };
+
   const timestamp = tweet.timestamp?.toDate ? formatDistanceToNow(tweet.timestamp.toDate(), { addSuffix: true }) : 'just now';
   const isRetweet = tweet.type === 'retweet';
   const isAdminEmail = user?.email === 'jeyaulhoque2025@gmail.com' || user?.email === 'jeyaulbooks@gmail.com';
@@ -181,7 +204,29 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
               <span className="text-white/10">·</span>
               <span className="text-white/20 text-xs">{timestamp}</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              {sentiment && (
+                <div className={`p-1 px-2 rounded-full border text-[8px] font-bold uppercase flex items-center gap-1 ${
+                  sentiment === 'positive' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                  sentiment === 'negative' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                  'bg-white/5 border-white/10 text-white/40'
+                }`}>
+                  {sentiment === 'positive' && <Smile size={10} />}
+                  {sentiment === 'negative' && <Frown size={10} />}
+                  {sentiment === 'neutral' && <Meh size={10} />}
+                  {sentiment}
+                </div>
+              )}
+              {tweet.content && tweet.content.length > 200 && (
+                <button 
+                  onClick={handleSummarize}
+                  disabled={isSummarizing}
+                  className={`p-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all ${summary ? 'bg-jtweet-cyan text-black border-jtweet-cyan shadow-cyan' : 'bg-white/5 border-white/10 text-white/40 hover:text-jtweet-cyan hover:border-jtweet-cyan/40'}`}
+                >
+                  <Sparkles size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                  {summary ? 'Full Signal' : 'Summary'}
+                </button>
+              )}
               {(isAuthor || isAdmin) && (
                 <button 
                   onClick={(e) => {
@@ -202,7 +247,29 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
           </div>
           
           {tweet.content && (
-            <FormattedContent content={tweet.content} />
+            <div className="relative group/content">
+              <FormattedContent content={tweet.content} />
+              
+              <AnimatePresence>
+                {summary && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-3 p-4 glass border border-jtweet-cyan/20 bg-jtweet-cyan/5 rounded-2xl relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-jtweet-cyan" />
+                    <div className="flex items-center gap-2 mb-1 text-jtweet-cyan text-[10px] font-bold uppercase tracking-widest">
+                       <Brain size={12} />
+                       AI Pulse Summary
+                    </div>
+                    <p className="text-xs text-white/90 italic leading-relaxed">
+                       "{summary}"
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
 
           {tweet.media && <MediaRenderer media={tweet.media} />}
