@@ -81,7 +81,9 @@ export interface Tweet {
   originalTweet?: Tweet | null;
   media?: {
     youtubeId?: string;
+    facebookVideoId?: string;
     images?: string[];
+    originalUrl?: string;
   };
   author?: {
     name: string;
@@ -230,8 +232,14 @@ export function TweetProvider({ children }: { children: React.ReactNode }) {
     
     let media: any = pMedia ? { images: [pMedia.url], type: pMedia.type } : {};
     
-    if (parsed.youtubeId) media.youtubeId = parsed.youtubeId;
-    if (parsed.facebookVideoId) media.facebookVideoId = parsed.facebookVideoId;
+    if (parsed.youtubeId) {
+      media.youtubeId = parsed.youtubeId;
+      media.originalUrl = `https://www.youtube.com/watch?v=${parsed.youtubeId}`;
+    }
+    if (parsed.facebookVideoId) {
+      media.facebookVideoId = parsed.facebookVideoId;
+      media.originalUrl = `https://www.facebook.com/watch/?v=${parsed.facebookVideoId}`;
+    }
     if (parsed.imageUrls) {
       media.images = [...(media.images || []), ...parsed.imageUrls];
     }
