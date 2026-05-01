@@ -10,6 +10,7 @@ import {
   updateDoc, 
   doc, 
   deleteDoc,
+  getDoc,
   getDocs,
   limit
 } from 'firebase/firestore';
@@ -76,9 +77,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // Fetch sender data if not a broadcast or system message
         let senderInfo = { name: 'System', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system' };
         if (data.senderId && data.senderId !== 'system') {
-           const senderSnap = await getDocs(query(collection(db, 'users'), where('uid', '==', data.senderId)));
-           if (!senderSnap.empty) {
-             const sd = senderSnap.docs[0].data();
+           const senderSnap = await getDoc(doc(db, 'users', data.senderId));
+           if (senderSnap.exists()) {
+             const sd = senderSnap.data();
              senderInfo = { name: sd.name, avatar: sd.avatar };
            }
         }
