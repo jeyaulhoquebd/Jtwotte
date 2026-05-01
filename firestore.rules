@@ -14,7 +14,8 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'jeyaulhoque2025@gmail.com' ||
         request.auth.token.email == 'jeyaulbooks@gmail.com' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'founder']
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'founder'])
       );
     }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -38,7 +39,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if true; 
+      allow get, list: if true; 
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if (isOwner(userId) || isAdmin()) 
         && incoming().uid == existing().uid
@@ -106,17 +107,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Secure notifications collection
     match /notifications/{notiId} {
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn(); 
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /bookmarks/{bookmarkId} {
-      allow read, write: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || incoming().userId == request.auth.uid);
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid || isAdmin());
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /conversations/{convId} {

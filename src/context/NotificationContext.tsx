@@ -68,32 +68,42 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const notifs: Notification[] = [];
-      let unread = 0;
+      try {
+        const notifsPromises = snapshot.docs.map(async (d) => {
+          const data = d.data();
+          
+          let senderInfo = { name: 'System', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system' };
+          if (data.senderId && data.senderId !== 'system') {
+            try {
+              const senderSnap = await getDoc(doc(db, 'users', data.senderId));
+              if (senderSnap.exists()) {
+                const sd = senderSnap.data();
+                senderInfo = { name: sd.name, avatar: sd.avatar };
+              }
+            } catch (err) {
+              console.warn("Could not fetch sender info for", data.senderId, err);
+            }
+          }
 
-      for (const d of snapshot.docs) {
-        const data = d.data();
-        if (!data.read) unread++;
+          return {
+            id: d.id,
+            ...data,
+            sender: senderInfo
+          } as Notification;
+        });
 
-        // Fetch sender data if not a broadcast or system message
-        let senderInfo = { name: 'System', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system' };
-        if (data.senderId && data.senderId !== 'system') {
-           const senderSnap = await getDoc(doc(db, 'users', data.senderId));
-           if (senderSnap.exists()) {
-             const sd = senderSnap.data();
-             senderInfo = { name: sd.name, avatar: sd.avatar };
-           }
-        }
+        const notifs = await Promise.all(notifsPromises);
+        let unread = notifs.filter(n => !n.read).length;
 
-        notifs.push({
-          id: d.id,
-          ...data,
-          sender: senderInfo
-        } as Notification);
+        setNotifications(notifs);
+        setUnreadCount(unread);
+        setLoading(false);
+      } catch (error) {
+        console.error("Notifications processing error:", error);
+        setLoading(false);
       }
-
-      setNotifications(notifs);
-      setUnreadCount(unread);
+    }, (error) => {
+      console.error("Notifications listener error:", error);
       setLoading(false);
     });
 

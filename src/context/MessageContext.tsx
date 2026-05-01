@@ -77,27 +77,40 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const convos: Conversation[] = [];
-      for (const d of snapshot.docs) {
-        const data = d.data();
-        const recipientId = data.participants.find((p: string) => p !== user.uid);
-        
-        let recipientData = { uid: recipientId, name: 'Unknown User', avatar: '' };
-        if (recipientId) {
-          const userSnap = await getDoc(doc(db, 'users', recipientId));
-          if (userSnap.exists()) {
-            const ud = userSnap.data();
-            recipientData = { uid: ud.uid, name: ud.name, avatar: ud.avatar };
+      try {
+        const convosPromises = snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const recipientId = data.participants.find((p: string) => p !== user.uid);
+          
+          let recipientData = { uid: recipientId, name: 'Unknown User', avatar: '' };
+          if (recipientId) {
+            try {
+              const userSnap = await getDoc(doc(db, 'users', recipientId));
+              if (userSnap.exists()) {
+                const ud = userSnap.data();
+                recipientData = { uid: ud.uid, name: ud.name, avatar: ud.avatar };
+              }
+            } catch (err) {
+              console.warn("Could not fetch recipient info for", recipientId, err);
+            }
           }
-        }
 
-        convos.push({
-          id: d.id,
-          ...data,
-          recipient: recipientData
-        } as Conversation);
+          return {
+            id: d.id,
+            ...data,
+            recipient: recipientData
+          } as Conversation;
+        });
+        
+        const convos = await Promise.all(convosPromises);
+        setConversations(convos);
+        setLoading(false);
+      } catch (error) {
+        console.error("Conversations processing error:", error);
+        setLoading(false);
       }
-      setConversations(convos);
+    }, (error) => {
+      console.error("Conversations listener error:", error);
       setLoading(false);
     });
 
@@ -128,6 +141,8 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         ...d.data()
       })) as Message[];
       setMessages(msgs);
+    }, (error) => {
+      console.error("Messages listener error:", error);
     });
 
     return unsubscribe;
