@@ -11,7 +11,7 @@ import {
   updateDoc,
   getDoc
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
 
@@ -33,69 +33,96 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
   const followUser = async (targetUserId: string) => {
     if (!user) return;
     
-    // Check if already following
-    const q = query(
-      collection(db, 'followers'),
-      where('followerId', '==', user.uid),
-      where('followedId', '==', targetUserId)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) return;
+    try {
+      // Check if already following
+      const q = query(
+        collection(db, 'followers'),
+        where('followerId', '==', user.uid),
+        where('followedId', '==', targetUserId)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) return;
 
-    await addDoc(collection(db, 'followers'), {
-      followerId: user.uid,
-      followedId: targetUserId,
-      createdAt: serverTimestamp()
-    });
+      await addDoc(collection(db, 'followers'), {
+        followerId: user.uid,
+        followedId: targetUserId,
+        createdAt: serverTimestamp()
+      });
 
-    // Send notification
-    await sendNotification(targetUserId, {
-      type: 'follow',
-      senderId: user.uid,
-      relatedId: user.uid,
-      content: 'started following you'
-    });
+      // Send notification
+      await sendNotification(targetUserId, {
+        type: 'follow',
+        senderId: user.uid,
+        relatedId: user.uid,
+        content: 'started following you'
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'followers');
+    }
   };
 
   const unfollowUser = async (targetUserId: string) => {
     if (!user) return;
-    const q = query(
-      collection(db, 'followers'),
-      where('followerId', '==', user.uid),
-      where('followedId', '==', targetUserId)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      await deleteDoc(doc(db, 'followers', snap.docs[0].id));
+    try {
+      const q = query(
+        collection(db, 'followers'),
+        where('followerId', '==', user.uid),
+        where('followedId', '==', targetUserId)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        await deleteDoc(doc(db, 'followers', snap.docs[0].id));
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'followers');
     }
   };
 
   const isFollowing = async (targetUserId: string) => {
     if (!user) return false;
-    const q = query(
-      collection(db, 'followers'),
-      where('followerId', '==', user.uid),
-      where('followedId', '==', targetUserId)
-    );
-    const snap = await getDocs(q);
-    return !snap.empty;
+    try {
+      const q = query(
+        collection(db, 'followers'),
+        where('followerId', '==', user.uid),
+        where('followedId', '==', targetUserId)
+      );
+      const snap = await getDocs(q);
+      return !snap.empty;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, 'followers');
+      return false;
+    }
   };
 
   const getFollowersCount = async (userId: string) => {
-    const q = query(collection(db, 'followers'), where('followedId', '==', userId));
-    const snap = await getDocs(q);
-    return snap.size;
+    try {
+      const q = query(collection(db, 'followers'), where('followedId', '==', userId));
+      const snap = await getDocs(q);
+      return snap.size;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, 'followers');
+      return 0;
+    }
   };
 
   const getFollowingCount = async (userId: string) => {
-    const q = query(collection(db, 'followers'), where('followerId', '==', userId));
-    const snap = await getDocs(q);
-    return snap.size;
+    try {
+      const q = query(collection(db, 'followers'), where('followerId', '==', userId));
+      const snap = await getDocs(q);
+      return snap.size;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, 'followers');
+      return 0;
+    }
   };
 
   const updateProfile = async (data: any) => {
     if (!user) return;
-    await updateDoc(doc(db, 'users', user.uid), data);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+    }
   };
 
   return (

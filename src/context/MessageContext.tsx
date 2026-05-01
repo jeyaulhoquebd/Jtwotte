@@ -15,7 +15,7 @@ import {
   setDoc,
   Timestamp
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 
 export interface Conversation {
@@ -110,7 +110,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     }, (error) => {
-      console.error("Conversations listener error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'conversations');
       setLoading(false);
     });
 
@@ -142,7 +142,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
       })) as Message[];
       setMessages(msgs);
     }, (error) => {
-      console.error("Messages listener error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'messages');
     });
 
     return unsubscribe;
@@ -151,61 +151,72 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   const startConversation = async (recipientId: string) => {
     if (!user) throw new Error('Auth required');
     
-    // Check if combo already exists
-    const q = query(
-      collection(db, 'conversations'),
-      where('participants', 'array-contains', user.uid)
-    );
-    const snap = await getDocs(q);
-    const existing = snap.docs.find(d => d.data().participants.includes(recipientId));
-    
-    if (existing) return existing.id;
+    try {
+      // Check if combo already exists
+      const q = query(
+        collection(db, 'conversations'),
+        where('participants', 'array-contains', user.uid)
+      );
+      const snap = await getDocs(q);
+      const existing = snap.docs.find(d => (d.data().participants as string[]).includes(recipientId));
+      
+      if (existing) return existing.id;
 
-    const newConv = await addDoc(collection(db, 'conversations'), {
-      participants: [user.uid, recipientId].sort(),
-      lastMessage: '',
-      updatedAt: serverTimestamp(),
-      lastMessageSenderId: ''
-    });
+      const newConv = await addDoc(collection(db, 'conversations'), {
+        participants: [user.uid, recipientId].sort(),
+        lastMessage: '',
+        updatedAt: serverTimestamp(),
+        lastMessageSenderId: ''
+      });
 
-    return newConv.id;
+      return newConv.id;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'conversations');
+      return '';
+    }
   };
 
   const sendMessage = async (content: string, type: any = 'text') => {
     if (!user || !activeConversation) return;
 
-    const msgData = {
-      senderId: user.uid,
-      content,
-      type,
-      timestamp: serverTimestamp(),
-      readBy: [user.uid]
-    };
+    try {
+      const msgData = {
+        senderId: user.uid,
+        content,
+        type,
+        timestamp: serverTimestamp(),
+        readBy: [user.uid]
+      };
 
-    await addDoc(collection(db, 'conversations', activeConversation.id, 'messages'), msgData);
-    
-    await updateDoc(doc(db, 'conversations', activeConversation.id), {
-      lastMessage: content,
-      updatedAt: serverTimestamp(),
-      lastMessageSenderId: user.uid
-    });
+      await addDoc(collection(db, 'conversations', activeConversation.id, 'messages'), msgData);
+      
+      await updateDoc(doc(db, 'conversations', activeConversation.id), {
+        lastMessage: content,
+        updatedAt: serverTimestamp(),
+        lastMessageSenderId: user.uid
+      });
+    } catch (error) {
+       handleFirestoreError(error, OperationType.WRITE, `conversations/${activeConversation.id}/messages`);
+    }
   };
 
   const markAsRead = async (convId: string) => {
     if (!user) return;
-    const msgsRef = collection(db, 'conversations', convId, 'messages');
-    const unreadQuery = query(msgsRef, where('readBy', 'not-in', [[user.uid]]));
-    // Firebase 'not-in' with arrays is tricky, usually we'd structure read flags better.
-    // For this prototype, we'll mark the latest few unread.
-    const snap = await getDocs(unreadQuery);
-    const promises = snap.docs.map(d => {
-       const data = d.data();
-       if (!data.readBy.includes(user.uid)) {
-         return updateDoc(d.ref, { readBy: [...data.readBy, user.uid] });
-       }
-       return null;
-    }).filter(p => p !== null);
-    await Promise.all(promises);
+    try {
+      const msgsRef = collection(db, 'conversations', convId, 'messages');
+      const unreadQuery = query(msgsRef, where('readBy', 'not-in', [[user.uid]]));
+      const snap = await getDocs(unreadQuery);
+      const promises = snap.docs.map(d => {
+         const data = d.data();
+         if (!data.readBy.includes(user.uid)) {
+           return updateDoc(d.ref, { readBy: [...data.readBy, user.uid] });
+         }
+         return null;
+      }).filter(p => p !== null);
+      await Promise.all(promises);
+    } catch (error) {
+       handleFirestoreError(error, OperationType.UPDATE, `conversations/${convId}/messages`);
+    }
   };
 
   return (

@@ -206,10 +206,16 @@ export default function Layout() {
             <div className="glass p-4 rounded-2xl border border-jtweet-cyan/30 shadow-cyan-lg flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-jtweet-cyan/10 flex items-center justify-center text-jtweet-cyan">
-                   <RotateCcw size={16} />
+                   {lastAction.type === 'reaction' ? <Zap size={16} /> : 
+                    lastAction.type === 'post' ? <Send size={16} /> : 
+                    <RotateCcw size={16} />}
                 </div>
                 <div>
-                   <p className="text-xs font-bold text-white uppercase tracking-wider">Signal Reversion Available</p>
+                   <p className="text-xs font-bold text-white uppercase tracking-wider">
+                     {lastAction.type === 'reaction' ? 'Signal Reacted' : 
+                      lastAction.type === 'post' ? 'Signal Broadcasted' : 
+                      'Signal Reversion Available'}
+                   </p>
                    <p className="text-[10px] text-white/40">Undo your last interaction</p>
                 </div>
               </div>

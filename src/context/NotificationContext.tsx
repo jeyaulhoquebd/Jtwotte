@@ -14,7 +14,7 @@ import {
   getDocs,
   limit
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 
 export interface Notification {
@@ -103,7 +103,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         setLoading(false);
       }
     }, (error) => {
-      console.error("Notifications listener error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'notifications');
       setLoading(false);
     });
 
@@ -113,19 +113,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const sendNotification = async (targetUserId: string, data: any) => {
     if (targetUserId === user?.uid && data.type !== 'broadcast') return;
     
-    await addDoc(collection(db, 'notifications'), {
-      ...data,
-      userId: targetUserId,
-      timestamp: serverTimestamp(),
-      read: false
-    });
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...data,
+        userId: targetUserId,
+        timestamp: serverTimestamp(),
+        read: false
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'notifications');
+    }
   };
 
   const markAsRead = async (id: string) => {
     if (!user) return;
-    await updateDoc(doc(db, 'notifications', id), {
-      read: true
-    });
+    try {
+      await updateDoc(doc(db, 'notifications', id), {
+        read: true
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `notifications/${id}`);
+    }
   };
 
   const markAllAsRead = async () => {
@@ -133,13 +141,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const unread = notifications.filter(n => !n.read);
     const promises = unread.map(n => 
       updateDoc(doc(db, 'notifications', n.id), { read: true })
+        .catch(error => handleFirestoreError(error, OperationType.UPDATE, `notifications/${n.id}`))
     );
     await Promise.all(promises);
   };
 
   const deleteNotification = async (id: string) => {
     if (!user) return;
-    await deleteDoc(doc(db, 'notifications', id));
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `notifications/${id}`);
+    }
   };
 
   const broadcastMessage = async (content: string, type: any = 'broadcast') => {

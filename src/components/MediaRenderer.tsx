@@ -115,7 +115,7 @@ const EmbedCard = ({
   return (
     <div 
       ref={containerRef}
-      className={`relative ${isVertical ? 'aspect-[9/16] max-h-[500px] md:max-h-[600px] w-full max-w-[300px] md:max-w-[340px] mx-auto' : 'aspect-video'} rounded-2xl overflow-hidden glass border border-white/10 group shadow-2xl transition-all hover:border-jtweet-cyan/30`}
+      className={`relative ${isVertical ? 'aspect-[9/16] max-h-[500px] md:max-h-[600px] w-full max-w-[300px] md:max-w-[340px] mx-auto' : 'aspect-video w-full mx-auto'} rounded-2xl overflow-hidden glass border border-white/10 group shadow-2xl transition-all hover:border-jtweet-cyan/30`}
     >
       {!isLoaded ? (
         <div 
@@ -126,7 +126,7 @@ const EmbedCard = ({
             <img 
               src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} 
               alt="Thumbnail" 
-              className="w-full h-full object-cover opacity-50 group-hover:scale-105 group-hover:opacity-60 transition-all duration-700" 
+              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 group-hover:opacity-60 transition-all duration-700" 
               loading="lazy"
             />
           )}
