@@ -101,7 +101,14 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
   const [showReactions, setShowReactions] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
-  const { addComment, getComments, isLiked, toggleReaction, getUserReaction } = useTweets();
+  const { 
+    addComment, 
+    getComments, 
+    isLiked, 
+    toggleReaction, 
+    getUserReaction,
+    retweet 
+  } = useTweets();
   const reactionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const [summary, setSummary] = useState<string | null>(null);
@@ -135,6 +142,10 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
   const userReaction = getUserReaction(tweet.id);
   const liked = isLiked(tweet.id);
 
+  const [isEchoing, setIsEchoing] = useState(false);
+  const [echoContent, setEchoContent] = useState('');
+  const [showOptions, setShowOptions] = useState(false);
+
   const loadComments = async () => {
     const data = await getComments(tweet.id);
     setComments(data);
@@ -148,6 +159,13 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
     loadComments();
   };
 
+  const handleEchoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await retweet(tweet.id, echoContent);
+    setEchoContent('');
+    setIsEchoing(false);
+  };
+
   return (
     <motion.div 
       layout
@@ -157,15 +175,75 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
       whileHover={{ y: -2 }}
       className="p-3 md:p-5 hover:bg-white/2 transition-all group relative border-b border-white/5"
     >
+      {/* Neural Quote Modal */}
+      <AnimatePresence>
+        {isEchoing && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setIsEchoing(false)}
+               className="absolute inset-0 bg-jtweet-black/80 backdrop-blur-md"
+             />
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+               className="glass w-full max-w-lg rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative z-10"
+             >
+                <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                   <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-jtweet-cyan">Echo with Commentary</h3>
+                   <button onClick={() => setIsEchoing(false)} className="text-white/40 hover:text-white p-1 hover:bg-white/5 rounded-full transition-all">
+                      <MoreHorizontal size={18} className="rotate-45" />
+                   </button>
+                </div>
+                <form onSubmit={handleEchoSubmit} className="p-6 space-y-4">
+                   <div className="flex gap-4">
+                      <img src={user?.avatar} alt="Avatar" className="w-10 h-10 rounded-full border border-jtweet-cyan/20 p-0.5" />
+                      <textarea 
+                        autoFocus
+                        placeholder="Neural perspective on this signal..."
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder:text-white/20 resize-none min-h-[100px]"
+                        value={echoContent}
+                        onChange={(e) => setEchoContent(e.target.value)}
+                      />
+                   </div>
+
+                   <div className="p-4 rounded-2xl border border-white/5 bg-white/2 scale-95 origin-top opacity-60">
+                      <div className="flex items-center gap-2 mb-2">
+                         <img src={tweet.author?.avatar} className="w-4 h-4 rounded-full" />
+                         <span className="text-[10px] font-bold text-white/50">{tweet.author?.name}</span>
+                      </div>
+                      <div className="text-xs line-clamp-2 text-white/40 italic">
+                         {tweet.content}
+                      </div>
+                   </div>
+
+                   <div className="flex justify-end pt-4 border-t border-white/5">
+                      <button 
+                        type="submit"
+                        className="bg-jtweet-cyan text-jtweet-black px-8 py-2 rounded-full font-bold uppercase tracking-widest text-xs shadow-cyan hover:brightness-110 active:scale-95 transition-all"
+                      >
+                         Amplify Signal
+                      </button>
+                   </div>
+                </form>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-jtweet-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       
       {isRetweet && (
-        <div className="flex items-center gap-2 mb-3 ml-10 md:ml-12">
-          <Repeat2 size={12} className="text-jtweet-cyan animate-pulse md:size-14" />
-          <span className="text-[10px] md:text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">{tweet.author?.name} echoed this signal</span>
+        <div className="flex items-center gap-2 mb-3 ml-10 md:ml-12 text-jtweet-cyan">
+          <Repeat2 size={12} className="animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{tweet.author?.name} echoed this signal</span>
         </div>
       )}
 
+      {/* Main Content Area */}
       <div className="flex gap-3 md:gap-4 relative">
         <Link to={`/profile/${tweet.authorId}`} className="relative h-fit shrink-0 group/avatar" onClick={(e) => e.stopPropagation()}>
           <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl overflow-hidden glass border border-white/10 group-hover/avatar:border-jtweet-cyan/50 transition-all p-0.5">
@@ -216,7 +294,7 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative">
               {tweet.content && tweet.content.length > 200 && (
                 <button 
                   onClick={handleSummarize}
@@ -227,22 +305,52 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                   {summary ? 'Full Signal' : 'Summary'}
                 </button>
               )}
-              {(isAuthor || isAdmin) && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if(window.confirm("CRITICAL: This signal will be permanently redacted from history. Proceed?")) onDelete();
-                  }}
-                  className="p-2 rounded-full hover:bg-red-400/10 text-white/30 hover:text-red-400 transition-all md:opacity-0 md:group-hover:opacity-100 flex items-center gap-1.5"
-                  title="Purge Signal"
-                >
-                  <Trash2 size={14} className="md:size-4" />
-                  <span className="text-[9px] font-bold uppercase tracking-tight md:hidden">Delete</span>
-                </button>
-              )}
-              <button className="text-white/20 hover:text-jtweet-cyan transition-colors p-1 rounded-full hover:bg-jtweet-cyan/10">
-                <MoreHorizontal size={16} />
+              
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowOptions(!showOptions);
+                }}
+                className={`text-white/20 hover:text-jtweet-cyan transition-colors p-1.5 rounded-full hover:bg-jtweet-cyan/10 ${showOptions ? 'text-jtweet-cyan bg-jtweet-cyan/10' : ''}`}
+              >
+                <MoreHorizontal size={18} />
               </button>
+
+              <AnimatePresence>
+                {showOptions && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowOptions(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                      className="absolute top-full right-0 mt-2 w-48 glass rounded-2xl border border-white/10 shadow-2xl p-2 z-50 overflow-hidden"
+                    >
+                       {(isAuthor || isAdmin) && (
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             if(window.confirm("CRITICAL: This signal will be permanently redacted from history. Proceed?")) onDelete();
+                             setShowOptions(false);
+                           }}
+                           className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-400/10 text-red-400/60 hover:text-red-400 transition-all font-bold text-[10px] uppercase tracking-widest"
+                         >
+                           <Trash2 size={16} />
+                           Purge Signal
+                         </button>
+                       )}
+                       <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest">
+                          <Brain size={16} />
+                          Analyze Node
+                       </button>
+                       <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest">
+                          <ShieldCheck size={16} />
+                          Trust Report
+                       </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           
@@ -324,7 +432,7 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
                color="green" 
                onClick={(e) => {
                  e.stopPropagation();
-                 onRetweet();
+                 setIsEchoing(true);
                }}
              />
              

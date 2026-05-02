@@ -37,6 +37,8 @@ export default function Layout() {
   // Simple unread calculation for messages based on conversations
   const unreadMessagesCount = conversations.filter(c => c.lastMessageSenderId !== user?.uid).length;
 
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -44,10 +46,70 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex justify-center max-w-7xl mx-auto px-0 md:px-4 gap-0 md:gap-4 relative">
+      <AnimatePresence>
+        {showMobileMenu && (
+          <div className="fixed inset-0 z-[100] md:hidden">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileMenu(false)}
+              className="absolute inset-0 bg-jtweet-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute top-0 left-0 bottom-0 w-[80%] max-w-sm glass border-r border-white/10 p-6 flex flex-col"
+            >
+               <div className="flex items-center justify-between mb-8">
+                  <Logo />
+                  <button onClick={() => setShowMobileMenu(false)} className="text-white/40 p-2">
+                     <CloseIcon size={24} />
+                  </button>
+               </div>
+
+               <div className="flex items-center gap-4 mb-8 p-4 glass rounded-3xl">
+                  <img src={user?.avatar} alt="Avatar" className="w-12 h-12 rounded-full border border-jtweet-cyan/20 p-0.5" />
+                  <div>
+                     <p className="font-bold text-white">{user?.name}</p>
+                     <p className="text-xs text-white/40 font-mono italic">@user_{user?.uid.slice(0, 5)}</p>
+                  </div>
+               </div>
+
+               <nav className="space-y-1 flex-1">
+                 <NavItem to="/" icon={<Home size={24} />} label="Home" />
+                 <NavItem to="/explore" icon={<Search size={24} />} label="Explore" />
+                 <NavItem to="/network" icon={<Brain size={24} />} label="Neural Mesh" />
+                 <NavItem to="/delete" icon={<Trash2 size={24} />} label="Delete" />
+                 <NavItem to="/notifications" icon={<Bell size={24} />} label="Notifications" badge={unreadCount} />
+                 <NavItem to="/messages" icon={<Mail size={24} />} label="Messages" badge={unreadMessagesCount > 0 ? 1 : 0} />
+                 <NavItem to={`/profile/${user?.uid}`} icon={<User size={24} />} label="Profile" />
+                 <NavItem to="/settings" icon={<Settings size={24} />} label="Settings" />
+               </nav>
+
+               <button 
+                 onClick={handleLogout}
+                 className="mt-4 flex items-center gap-4 p-4 text-red-400 font-bold uppercase tracking-widest text-xs"
+               >
+                 <LogOut size={20} />
+                 Disconnect Node
+               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Header (Top) */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-14 glass flex items-center justify-between px-4 z-50 border-b border-white/10">
         <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
-          <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover" onClick={() => navigate(`/profile/${user?.uid}`)} />
+          <img 
+            src={user?.avatar} 
+            alt="Avatar" 
+            className="w-full h-full object-cover" 
+            onClick={() => setShowMobileMenu(true)} 
+          />
         </div>
         <div className="flex items-center gap-4">
            <div className="scale-75 origin-center">
@@ -149,7 +211,7 @@ export default function Layout() {
       </main>
 
       {/* Right Sidebar */}
-      <aside className="hidden lg:flex flex-col w-80 h-screen sticky top-0 py-6 space-y-6">
+      <aside className="hidden lg:flex flex-col w-80 h-screen sticky top-0 py-6 space-y-6 overflow-y-auto no-scrollbar pr-2">
         <div className="glass rounded-3xl p-4">
            <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={18} />
@@ -161,13 +223,60 @@ export default function Layout() {
            </div>
         </div>
 
+        {/* Intelligence Streams Explanation */}
+        <div className="glass rounded-3xl p-5 border border-jtweet-cyan/10 bg-jtweet-cyan/5 group hover:border-jtweet-cyan/30 transition-all">
+           <div className="flex items-center gap-2 mb-3 text-jtweet-cyan">
+              <Sparkles size={18} className="animate-pulse" />
+              <h3 className="font-display font-bold text-sm tracking-widest uppercase">Intelligence Streams</h3>
+           </div>
+           <p className="text-[11px] text-white/60 leading-relaxed">
+             Our Neural Mesh optimizes signal flow through real-time heuristic weighting. These streams represent the highest density of concurrent neural activity across the global distribution.
+           </p>
+           <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+              <div className="flex flex-col">
+                 <span className="text-[9px] text-white/40 uppercase font-bold tracking-tight">Active Nodes</span>
+                 <span className="text-xs font-mono font-bold text-jtweet-cyan">842,911</span>
+              </div>
+              <div className="flex flex-col text-right">
+                 <span className="text-[9px] text-white/40 uppercase font-bold tracking-tight">Mesh Load</span>
+                 <span className="text-xs font-mono font-bold text-red-400">Optimal</span>
+              </div>
+           </div>
+        </div>
+
         <div className="glass rounded-3xl p-4 overflow-hidden border-white/5">
-          <h3 className="font-display font-bold text-lg mb-4 tracking-tight">System Trends</h3>
-          <div className="space-y-4">
-            <TrendItem category="Technology" topic="#NeuroGraph" posts="12.4K" />
-            <TrendItem category="Futurism" topic="#JTweet" posts="45.1K" />
-            <TrendItem category="Analytics" topic="Real-time Flow" posts="8.2K" />
+          <div className="flex items-center justify-between mb-4">
+             <h3 className="font-display font-bold text-base tracking-tight">Trending Nodes</h3>
+             <Activity size={16} className="text-white/20" />
           </div>
+          <div className="space-y-5">
+            <TrendItem category="GLOBAL SIGNAL DISTRIBUTION" topic="#GenerativeAI" posts="1.2M" />
+            <TrendItem category="NEURAL ARCHITECTURE" topic="#FutureTech" posts="840K" />
+            <TrendItem category="BIOMETRIC FEEDBACK" topic="#NeuralLink" posts="520K" />
+            <TrendItem category="FRACTAL LOGIC" topic="#QuantumSocial" posts="310K" />
+          </div>
+          <button className="w-full mt-6 py-2 rounded-xl text-[10px] font-bold text-jtweet-cyan uppercase tracking-widest hover:bg-jtweet-cyan/10 border border-jtweet-cyan/20 transition-all">
+             Expand Domain
+          </button>
+        </div>
+
+        <div className="glass rounded-3xl p-4 border-white/5">
+           <div className="flex items-center gap-2 mb-3">
+              <Brain size={16} className="text-white/40" />
+              <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Global Signal Analytics</h4>
+           </div>
+           <div className="h-20 w-full relative flex items-end gap-1 px-2">
+              {[40, 70, 45, 90, 60, 80, 50, 95, 40].map((h, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${h}%` }}
+                  transition={{ delay: i * 0.1, repeat: Infinity, repeatType: 'reverse', duration: 1.5 + Math.random() }}
+                  className="flex-1 bg-gradient-to-t from-jtweet-cyan/20 to-jtweet-cyan/60 rounded-t-sm"
+                />
+              ))}
+           </div>
+           <p className="text-[9px] text-white/20 mt-3 text-center uppercase tracking-tighter">Heuristic synchronization in progress...</p>
         </div>
       </aside>
 
