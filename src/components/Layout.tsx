@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -16,6 +16,7 @@ import {
   Zap,
   Activity,
   RotateCcw,
+  Sparkles,
   X as CloseIcon,
   Brain,
   Trash2

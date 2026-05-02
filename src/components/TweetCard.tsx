@@ -237,7 +237,13 @@ export default function TweetCard({ tweet, onLike, onRetweet, onDelete }: TweetC
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-jtweet-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       
       {isRetweet && (
-        <div className="flex items-center gap-2 mb-3 ml-10 md:ml-12 text-jtweet-cyan">
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsEchoing(true);
+          }}
+          className="flex items-center gap-2 mb-3 ml-10 md:ml-12 text-jtweet-cyan cursor-pointer hover:underline decoration-jtweet-cyan/30 underline-offset-4"
+        >
           <Repeat2 size={12} className="animate-pulse" />
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{tweet.author?.name} echoed this signal</span>
         </div>

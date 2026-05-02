@@ -15,40 +15,8 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import NeuralNetworkPage from './pages/NeuralNetworkPage';
 import DeleteCenter from './pages/DeleteCenter';
+import ExplorePage from './pages/ExplorePage';
 import { ShieldCheck, Zap } from 'lucide-react';
-
-// Placeholder Pages
-const Explore = () => (
-  <div className="p-6 space-y-8 animate-in fade-in duration-500">
-    <header>
-      <h2 className="text-3xl font-display font-bold tracking-tight">Intelligence Streams</h2>
-      <p className="text-white/40 mt-1 uppercase tracking-widest text-[10px] font-bold">Global Signal Distribution</p>
-    </header>
-    
-    <div className="space-y-4">
-      <h3 className="text-xs font-bold uppercase tracking-widest text-jtweet-cyan px-2">Trending Nodes</h3>
-      <div className="grid gap-4">
-        <TrendingTopic topic="#GenerativeAI" count="1.2M signals" />
-        <TrendingTopic topic="#FutureTech" count="840K signals" />
-        <TrendingTopic topic="#NeuralLink" count="520K signals" />
-        <TrendingTopic topic="#QuantumSocial" count="310K signals" />
-      </div>
-    </div>
-  </div>
-);
-
-function TrendingTopic({ topic, count }: { topic: string, count: string }) {
-  return (
-    <div className="glass p-5 rounded-[24px] border-white/5 hover:bg-white/5 transition-all cursor-pointer group flex justify-between items-center">
-      <div>
-        <h4 className="font-bold text-white group-hover:text-jtweet-cyan transition-colors">{topic}</h4>
-        <p className="text-xs text-white/40 mt-1">{count}</p>
-      </div>
-      <Zap size={14} className="text-white/10 group-hover:text-jtweet-cyan group-hover:animate-pulse transition-all" />
-    </div>
-  );
-}
-const Notifications = () => <div className="p-8"><h2 className="text-2xl font-bold font-display">Signal Log (Notifications)</h2><p className="text-white/40 mt-2">Personal interactions tracked.</p></div>; // Keep for safety if needed, or remove
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -89,7 +57,7 @@ export default function App() {
                   }>
                     <Route index element={<HomeFeed />} />
                     <Route path="admin" element={<AdminDashboard />} />
-                    <Route path="explore" element={<Explore />} />
+                    <Route path="explore" element={<ExplorePage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="messages" element={<MessagesPage />} />
                     <Route path="profile/:uid" element={<ProfilePage />} />
